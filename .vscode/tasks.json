@@ -1,0 +1,40 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "C/C++: g++ build active file",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "vasp.cpp",
+                "-o",
+                "vasp",
+                "-lboost_system",
+                "-lboost_filesystem",
+                "-lpthread"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Generated task to build the project using g++."
+        },
+        {
+            "label": "Run vasp",
+            "type": "shell",
+            "command": "${workspaceFolder}/vasp",
+            "args": ["${workspaceFolder}/../Materials/SiO2/POSCAR"],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

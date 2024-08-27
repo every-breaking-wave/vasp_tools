@@ -1,6 +1,5 @@
 #include "vasp.h"
 
-
 #define DEBUG 1
 
 #ifdef DEBUG
@@ -8,9 +7,6 @@
 #else
 #define DEBUG_PRINT(x)
 #endif
-
-
-namespace fs = boost::filesystem;
 
 ////////////////////////// Utility Functions //////////////////////////
 
@@ -41,7 +37,6 @@ void fs_copy_files(const std::vector<fs::path> &source_files, const fs::path &de
     }
 }
 
-
 void runCommand(const std::string &command)
 {
     int result = system(command.c_str());
@@ -52,19 +47,23 @@ void runCommand(const std::string &command)
     }
 }
 
-
-std::string extractKmeshValue(const std::string& filename) {
+std::string extractKmeshValue(const std::string &filename)
+{
     std::ifstream infile(filename);
     std::string line;
     std::string kmeshValue;
 
-    while (std::getline(infile, line)) {
-        if (line.find("is Generally Precise Enough!") != std::string::npos) {
+    while (std::getline(infile, line))
+    {
+        if (line.find("is Generally Precise Enough!") != std::string::npos)
+        {
             std::istringstream iss(line);
             // 忽略前面的部分，提取 Kmesh-Resolved Value
             std::string token;
-            while (iss >> token) {
-                if (token.find('-') != std::string::npos) {
+            while (iss >> token)
+            {
+                if (token.find('-') != std::string::npos)
+                {
                     // 取 - 号前面的部分作为 Kmesh 值
                     kmeshValue = token.substr(0, token.find('-'));
                     break;
@@ -133,14 +132,13 @@ std::string Vasp::prepareDirectory(const std::string &computeTask = "")
     }
 }
 
-
 int Vasp::generateKPOINTS()
 {
     // 启动 VASPKIT 进程
     VaspkitManager &vaspkit = VaspkitManager::getInstance();
 
     vaspkit.startVaspkit((*computeDir.end()).string());
-    // 发送初始输入
+
     vaspkit.sendInputToVaspkit("1\n");
     vaspkit.sendInputToVaspkit("102\n");
     vaspkit.sendInputToVaspkit("1\n");
@@ -165,12 +163,36 @@ int Vasp::generateKPOINTS()
     return 0;
 }
 
-void Vasp::generateINCAR(const std::string &INCAROptions)
+void Vasp::generateINCAR(const std::string &INCAROptions, bool isSCF = false, int dimension = 0)
 {
     VaspkitManager &vaspkit = VaspkitManager::getInstance();
     vaspkit.startVaspkit((*computeDir.end()).string());
-    vaspkit.sendInputToVaspkit("101\n");
-    vaspkit.sendInputToVaspkit(INCAROptions + "\n");
+    if (isSCF) // SCF calculation(静态自洽计算)
+    {
+        switch (dimension)
+        {
+        case 1:
+            vaspkit.sendInputToVaspkit("301\n");
+            break;
+        case 2:
+            vaspkit.sendInputToVaspkit("302\n");
+            break;
+        case 3:
+            vaspkit.sendInputToVaspkit("303\n");
+            break;
+        default:
+            std::cerr << "Error: Invalid dimension for SCF calculation." << std::endl;
+            break;
+        }
+    }
+    else
+    {
+        vaspkit.sendInputToVaspkit("101\n");
+        vaspkit.sendInputToVaspkit(INCAROptions + "\n");
+    }
+
+    // 等待 VASPKIT 产生输出（模拟延迟）
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     vaspkit.stopVaspkit();
 }
 
@@ -178,27 +200,26 @@ void Vasp::generateInputFiles(const std::string &poscarPath)
 {
     fs::current_path(computeDir);
     // Copy the provided POSCAR file
-    fs::copy_file(poscarPath, "POSCAR", fs::copy_option::overwrite_if_exists);
+    fs::copy_file(poscarPath, POSCAR, fs::copy_option::overwrite_if_exists);
     // Generate INCAR, POTCAR, and KPOINTS using VASPKIT
-    runCommand("vaspkit -task 103"); // Generate POTCAR
+    runCommand("vaspkit -task 103 2>&1");
     if (generateKPOINTS() != 0)
     {
         exit(EXIT_FAILURE);
     }
     generateINCAR("SR");
-    std::this_thread::sleep_for(std::chrono::seconds(2));
 }
 
 void Vasp::performStructureOptimization()
 {
     fs::current_path(computeDir);
     // 准备一个结构优化专门的目录
-    DEBUG_PRINT ("Preparing structure optimization directory...");
+    DEBUG_PRINT("Preparing structure optimization directory...");
     optDir = prepareDirectory(OPT_DIR);
 
-    // Copy the input files to the structure optimization directory    
+    // Copy the input files to the structure optimization directory
     //
-    fs_copy_files({"POSCAR", "INCAR", "POTCAR", "KPOINTS"}, optDir);
+    fs_copy_files({POSCAR, INCAR, POTCAR, KPOINTS}, optDir);
 
     fs::current_path(optDir);
 
@@ -212,18 +233,16 @@ void Vasp::performStaticCalculation()
     // Prepare a directory for the static calculation
     staticDir = prepareDirectory(STATIC_DIR);
 
-    // Copy the input files to the static calculation directory
-    fs_copy_files({"POTCAR", "KPOINTS"}, staticDir);
+    fs_copy_files({POTCAR, KPOINTS}, staticDir);
 
-    // Copy the CONTCAR file from the structure optimization directory
-    fs::copy_file(fs::path(optDir) / "CONTCAR", fs::path(staticDir) / "POSCAR", fs::copy_option::overwrite_if_exists);
+    // Copy the CONTCAR file from the OPTdir
+    fs::copy_file(fs::path(optDir) / CONTCAR, staticDir / POSCAR, fs::copy_option::overwrite_if_exists);
 
-    // Change to the static calculation directory
     fs::current_path(staticDir);
-    generateINCAR("ST");
 
+    generateINCAR("ST");
     // Modify INCAR for static calculation
-    // std::ofstream incar("INCAR");
+    // std::ofstream incar(INCAR);
     // incar << "ISTART = 0\n";
     // incar << "ICHARG = 2\n";
     // incar << "ISMEAR = 0\n";
@@ -233,6 +252,56 @@ void Vasp::performStaticCalculation()
 
     // Run VASP for static calculation
     runCommand("mpirun -np 4 vasp_std > vasp_static.log"); // Assuming MPI version of VASP
+}
+
+void Vasp::performDielectricCalculation()
+{
+    fs::current_path(computeDir);
+    // Prepare a directory for the dielectric calculation
+    dielectricDir = prepareDirectory(DIELECTRIC_DIR);
+
+    // Copy the input files to the dielectric calculation directory
+    fs_copy_files({POTCAR, KPOINTS}, dielectricDir);
+
+    // Copy the CONTCAR file from the structure optimization directory
+    fs::copy_file(fs::path(optDir) / CONTCAR, dielectricDir / POSCAR, fs::copy_option::overwrite_if_exists);
+
+    // Copy the WAVECAR file and CHGCAR file from the static calculation directory
+    fs_copy_files({staticDir / WAVECAR, staticDir / CHGCAR}, dielectricDir);
+
+    fs::current_path(dielectricDir);
+
+    generateINCAR("EC");
+    // Modify INCAR for dielectric calculation
+    // std::ofstream incar(INCAR);
+    // incar << "LEPSILON = .TRUE.\n";
+    // incar.close();
+
+    // Run VASP for dielectric calculation
+    runCommand("mpirun -np 4 vasp_std > vasp_dielectric.log");
+}
+
+void Vasp::performBandStructureCalculation()
+{
+    fs::current_path(computeDir);
+    // Prepare a directory for the band structure calculation
+    bandDir = prepareDirectory(BAND_DIR);
+
+    fs_copy_files({POTCAR, KPOINTS}, bandDir);
+
+    // Copy the CONTCAR file from OPTdir
+    fs::copy_file(fs::path(optDir) / CONTCAR, bandDir / POSCAR, fs::copy_option::overwrite_if_exists);
+
+    // NOTE: 注意这里是从结构优化目录中复制文件而非静态计算目录
+    fs_copy_files({optDir / WAVECAR, optDir / CHGCAR}, dielectricDir);
+
+    fs::current_path(bandDir);
+
+    // TODO: 实际上维度需要根据材料决定，这里先默认为3
+    generateINCAR("BS", true, 3);
+
+    // Run VASP for band structure calculation
+    runCommand("mpirun -np 4 vasp_std > vasp_band.log");
 }
 
 int main(int argc, char *argv[])
@@ -256,8 +325,14 @@ int main(int argc, char *argv[])
     std::cout << "Performing structure optimization..." << std::endl;
     vasp.performStructureOptimization();
 
-    std::cout << "Performing static calculation..." << std::endl;
-    vasp.performStaticCalculation();
+    // std::cout << "Performing static calculation..." << std::endl;
+    // vasp.performStaticCalculation();
+
+    // std::cout << "Performing dielectric calculation..." << std::endl;
+    // vasp.performDielectricCalculation();
+
+    std::cout << "Performing band structure calculation..." << std::endl;
+    vasp.performBandStructureCalculation();
 
     std::cout << "VASP calculation complete." << std::endl;
     return EXIT_SUCCESS;
