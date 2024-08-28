@@ -14,6 +14,7 @@
 
 #define STATIC_DIR "static_calc"
 #define OPT_DIR "opt_calc"
+#define SCF_DIR "scf_calc"
 #define BAND_DIR "band_calc"
 #define DIELECTRIC_DIR "dielectric_calc"
 
@@ -60,5 +61,6 @@ private:
     fs::path optDir;        // 结构优化计算的目录
     fs::path staticDir;     // 静态计算的目录
     fs::path bandDir;       // 带结构计算的目录
+    fs::path scfDir;        // 自洽计算的目录
     fs::path dielectricDir; // 介电常数计算的目录
 };

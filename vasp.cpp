@@ -76,7 +76,70 @@ std::string extractKmeshValue(const std::string &filename)
     return kmeshValue;
 }
 
-////////////////////////// Vasp //////////////////////////
+
+void modifyINCAR(const std::string &filepath, const std::map<std::string, std::string> &options)
+{
+    std::ifstream infile(filepath);
+    std::stringstream buffer;
+    std::string line;
+
+    // Flag to track if a key has been modified
+    std::map<std::string, bool> modifiedKeys;
+    for (const auto &option : options) {
+        modifiedKeys[option.first] = false;
+    }
+
+    // Read the file line by line
+    while (std::getline(infile, line))
+    {
+        std::string key, value;
+        std::size_t pos = line.find('=');
+
+        if (pos != std::string::npos)
+        {
+            key = line.substr(0, pos);
+            value = line.substr(pos + 1);
+
+            // Trim whitespace around key and value
+            key.erase(0, key.find_first_not_of(" \t"));
+            key.erase(key.find_last_not_of(" \t") + 1);
+            value.erase(0, value.find_first_not_of(" \t"));
+            value.erase(value.find_last_not_of(" \t") + 1);
+
+            // If the key exists in options, modify it
+            if (options.find(key) != options.end())
+            {
+                value = options.at(key);
+                modifiedKeys[key] = true;  // Mark as modified
+            }
+
+            buffer << key << " = " << value << std::endl;
+        }
+        else
+        {
+            buffer << line << std::endl;  // Keep the line unchanged if it does not contain '='
+        }
+    }
+
+    infile.close();
+
+    // Append new key-value pairs that were not found in the file
+    for (const auto &option : options)
+    {
+        if (!modifiedKeys[option.first])
+        {
+            buffer << option.first << " = " << option.second << std::endl;
+        }
+    }
+
+    // Write the modified content back to the file
+    std::ofstream outfile(filepath);
+    outfile << buffer.str();
+    outfile.close();
+}
+
+
+////////////////////////// Vasp Class//////////////////////////
 std::string Vasp::prepareDirectory(const std::string &computeTask = "")
 {
     try
@@ -286,16 +349,53 @@ void Vasp::performBandStructureCalculation()
     fs::current_path(computeDir);
     // Prepare a directory for the band structure calculation
     bandDir = prepareDirectory(BAND_DIR);
+    scfDir = prepareDirectory(SCF_DIR);
+    //
+    //  1：进行scf计算
+    //      重要参数： NSW = 0
+    //      IBRION = -1
+    //      LWAVE = .T.
+    //      LCHARG = .T.
+    //      KPONITS 该参数需要比结构优化要更精确一点，如果在结构优化时取得比较粗糙，那么在这里建议要取得更密一点
+    //
 
-    fs_copy_files({POTCAR, KPOINTS}, bandDir);
+    fs_copy_files({POTCAR, KPOINTS}, scfDir);
 
     // Copy the CONTCAR file from OPTdir
-    fs::copy_file(fs::path(optDir) / CONTCAR, bandDir / POSCAR, fs::copy_option::overwrite_if_exists);
+    fs::copy_file(fs::path(optDir) / CONTCAR, scfDir / POSCAR, fs::copy_option::overwrite_if_exists);
 
     // NOTE: 注意这里是从结构优化目录中复制文件而非静态计算目录
-    fs_copy_files({optDir / WAVECAR, optDir / CHGCAR}, dielectricDir);
+    fs_copy_files({optDir / WAVECAR, optDir / CHGCAR, optDir / INCAR}, scfDir);
 
-    fs::current_path(bandDir);
+    fs::current_path(scfDir);
+
+    // Run VASP for SCF calculation
+    runCommand("mpirun -np 4 vasp_std > vasp_band_scf.log");
+
+    // 2：进行带结构计算
+    //      重要参数： NSW = 0
+    //      IBRION = -1
+    //      LWAVE = .F.
+    //      LCHARG = .F.
+    //      LORBIT = 11 # 11表示计算带结构
+    //      加SOC,需要设置LSORBIT = .T.
+    //      GGA_COMPAT = .FALSE. 加速收敛
+    //      LMAXMIX = 4 有d轨道电子设4，f轨道电子设6
+    //      SAXIS = 0 0 1 控制磁矩方向
+    //      MAGMOM = 按坐标填磁矩
+    // 修改 INCAR 文件
+    std::ofstream incar(INCAR);
+    incar << "NSW = 0\n";
+    incar << "IBRION = -1\n";
+    incar << "LWAVE = .F.\n";
+    incar << "LCHARG = .F.\n";
+    incar << "LORBIT = 11\n";
+    incar << "LSORBIT = .T.\n";
+    incar << "GGA_COMPAT = .FALSE.\n";
+    incar << "LMAXMIX = 4\n";
+    incar << "SAXIS = 0 0 1\n";
+    incar.close();
+
 
     // TODO: 实际上维度需要根据材料决定，这里先默认为3
     generateINCAR("BS", true, 3);
@@ -335,5 +435,6 @@ int main(int argc, char *argv[])
     vasp.performBandStructureCalculation();
 
     std::cout << "VASP calculation complete." << std::endl;
+
     return EXIT_SUCCESS;
 }
