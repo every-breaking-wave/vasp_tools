@@ -17,6 +17,9 @@
 #define SCF_DIR "scf_calc"
 #define BAND_DIR "band_calc"
 #define DIELECTRIC_DIR "dielectric_calc"
+#define THERMAL_EXPANSION_DIR "thermal_expansion_calc"
+#define CONFIG_DIR "config"
+#define SCRIPT_DIR "scripts"
 
 // File names
 #define POSCAR "POSCAR"
@@ -38,11 +41,7 @@ public:
         {
             std::cerr << "Error: Failed to change directory." << std::endl;
             exit(EXIT_FAILURE);
-        }
-        computeDir = "";
-        optDir = "";
-        staticDir = "";
-        bandDir = "";
+        }        
     }
 
     // prepareDirectory() 函数用于为每次 VASP 计算准备一个新的目录
@@ -54,7 +53,9 @@ public:
     void performStaticCalculation();
     void performDielectricCalculation();
     void performBandStructureCalculation();
+    void performThermalExpansionCalculation();
 
+    void useHistoryOptDir();
 private:
     fs::path rootDir;       // 整个计算的根目录
     fs::path computeDir;    // 一次完整vasp计算的目录
@@ -63,4 +64,6 @@ private:
     fs::path bandDir;       // 带结构计算的目录
     fs::path scfDir;        // 自洽计算的目录
     fs::path dielectricDir; // 介电常数计算的目录
+    fs::path thermalExpansionDir; // 热膨胀计算的目录
+
 };

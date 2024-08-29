@@ -417,7 +417,7 @@ void Vasp::performBandStructureCalculation()
 
     // TODO: 实际上维度需要根据材料决定，这里先默认为3
     generateINCAR("BS", true, 3);
-    
+
     // 修改 INCAR 文件
     incarOptions = {{"NSW", "0"}, {"IBRION", "-1"}, {"LWAVE", ".F."}, {"LCHARG", ".F."}, {"LORBIT", "11"}, {"LSORBIT", ".T."}, {"GGA_COMPAT", ".FALSE."}, {"LMAXMIX", "4"}, {"SAXIS", "0 0 1"}};
     modifyINCAR(scfDir / INCAR, incarOptions);
@@ -427,6 +427,71 @@ void Vasp::performBandStructureCalculation()
 
     // Run VASP for band structure calculation
     runCommand("mpirun -np 4 vasp_std > vasp_band_nscf.log");
+}
+
+void Vasp::performThermalExpansionCalculation()
+{
+    fs::current_path(computeDir);
+    thermalExpansionDir = prepareDirectory(THERMAL_EXPANSION_DIR);
+
+    fs_copy_files({POTCAR, KPOINTS}, thermalExpansionDir);
+
+    // Copy the CONTCAR file from the structure optimization directory
+    fs::copy_file(fs::path(optDir) / CONTCAR, thermalExpansionDir / POSCAR, fs::copy_option::overwrite_if_exists);
+
+    // use prepared INCAR file
+    fs::copy_file(rootDir / CONFIG_DIR / "thermalExpansion.INCAR", thermalExpansionDir / INCAR, fs::copy_option::overwrite_if_exists);
+
+    fs::copy_file(rootDir / CONFIG_DIR / "mesh.conf", thermalExpansionDir / "mesh.conf", fs::copy_option::overwrite_if_exists);
+
+    fs::copy_file(rootDir / SCRIPT_DIR / "thermalExpansionAnalysis.sh", thermalExpansionDir / "thermalExpansionAnalysis.sh", fs::copy_option::overwrite_if_exists);
+
+    fs::current_path(thermalExpansionDir);
+
+    std::string command = "bash ./thermalExpansionAnalysis.sh";
+    runCommand(command);
+}
+
+void Vasp::useHistoryOptDir()
+{
+    std::cout << "Looking for previous structure optimization directory..." << std::endl;
+    fs::current_path(rootDir);
+    if (fs::is_directory(optDir))
+    {
+        fs::current_path(optDir);
+    }
+    else
+    {
+        // 查找当前目录下最新的以vasp_开头的目录
+        fs::directory_iterator end;
+        fs::path latestDir;
+        std::time_t latestTime = 0;
+        for (fs::directory_iterator it(rootDir); it != end; ++it)
+        {
+            if (fs::is_directory(it->path()) && it->path().filename().string().find("vasp_") == 0)
+            {
+                std::time_t lastWrite = fs::last_write_time(it->path());
+                if (lastWrite > latestTime)
+                {
+                    latestTime = lastWrite;
+                    latestDir = it->path();
+                }
+            }
+        }
+        if (!latestDir.empty())
+        {
+            std::cout << "Found previous structure optimization directory: " << latestDir << std::endl;
+            computeDir = latestDir;
+            optDir = latestDir / OPT_DIR;
+            fs::current_path(latestDir);
+            std::cout << "current computeDir: " << computeDir << std::endl;
+            std::cout << "current optDir: " << optDir << std::endl;
+        }
+        else
+        {
+            std::cerr << "Error: No previous structure optimization directory found." << std::endl;
+        }
+    }
 }
 
 int main(int argc, char *argv[])
@@ -442,13 +507,23 @@ int main(int argc, char *argv[])
 
     std::string poscarPath = argv[1];
 
-    vasp.prepareDirectory();
+    // 第二个参数，是否使用历史优化目录
+    if (argc > 2)
+    {
+        if (std::string(argv[2]) == "history")
+        {
+            vasp.useHistoryOptDir();
+        }
+    }
+    else
+    {
+        vasp.prepareDirectory();
+        std::cout << "Generating input files..." << std::endl;
+        vasp.generateInputFiles(poscarPath);
+    }
 
-    std::cout << "Generating input files..." << std::endl;
-    vasp.generateInputFiles(poscarPath);
-
-    std::cout << "Performing structure optimization..." << std::endl;
-    vasp.performStructureOptimization();
+    // std::cout << "Performing structure optimization..." << std::endl;
+    // vasp.performStructureOptimization();
 
     // std::cout << "Performing static calculation..." << std::endl;
     // vasp.performStaticCalculation();
@@ -456,8 +531,11 @@ int main(int argc, char *argv[])
     // std::cout << "Performing dielectric calculation..." << std::endl;
     // vasp.performDielectricCalculation();
 
-    std::cout << "Performing band structure calculation..." << std::endl;
-    vasp.performBandStructureCalculation();
+    // std::cout << "Performing band structure calculation..." << std::endl;
+    // vasp.performBandStructureCalculation();
+
+    std::cout << "Performing thermal expansion calculation..." << std::endl;
+    vasp.performThermalExpansionCalculation();
 
     std::cout << "VASP calculation complete." << std::endl;
 
