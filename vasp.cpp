@@ -37,6 +37,29 @@ void fs_copy_files(const std::vector<fs::path> &source_files, const fs::path &de
     }
 }
 
+void fs_copy_all_files(const fs::path &source_dir, const fs::path &destination_dir)
+{
+    try
+    {
+        if (!fs::exists(destination_dir))
+        {
+            fs::create_directory(destination_dir);
+        }
+        for (fs::directory_iterator it(source_dir); it != fs::directory_iterator(); ++it)
+        {
+            if (fs::is_regular_file(it->path()))
+            {
+                fs::path dest_path = destination_dir / it->path().filename();
+                fs::copy_file(it->path(), dest_path, fs::copy_option::overwrite_if_exists);
+            }
+        }
+    }
+    catch (fs::filesystem_error &e)
+    {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+}
+
 void runCommand(const std::string &command)
 {
     int result = system(command.c_str());
@@ -76,16 +99,16 @@ std::string extractKmeshValue(const std::string &filename)
     return kmeshValue;
 }
 
-
-void modifyINCAR(const std::string &filepath, const std::map<std::string, std::string> &options)
+void modifyINCAR(fs::path filepath, const std::map<std::string, std::string> &options)
 {
-    std::ifstream infile(filepath);
+    std::ifstream infile(filepath.string());
     std::stringstream buffer;
     std::string line;
 
     // Flag to track if a key has been modified
     std::map<std::string, bool> modifiedKeys;
-    for (const auto &option : options) {
+    for (const auto &option : options)
+    {
         modifiedKeys[option.first] = false;
     }
 
@@ -110,14 +133,14 @@ void modifyINCAR(const std::string &filepath, const std::map<std::string, std::s
             if (options.find(key) != options.end())
             {
                 value = options.at(key);
-                modifiedKeys[key] = true;  // Mark as modified
+                modifiedKeys[key] = true; // Mark as modified
             }
 
             buffer << key << " = " << value << std::endl;
         }
         else
         {
-            buffer << line << std::endl;  // Keep the line unchanged if it does not contain '='
+            buffer << line << std::endl; // Keep the line unchanged if it does not contain '='
         }
     }
 
@@ -133,11 +156,10 @@ void modifyINCAR(const std::string &filepath, const std::map<std::string, std::s
     }
 
     // Write the modified content back to the file
-    std::ofstream outfile(filepath);
+    std::ofstream outfile(filepath.string());
     outfile << buffer.str();
     outfile.close();
 }
-
 
 ////////////////////////// Vasp Class//////////////////////////
 std::string Vasp::prepareDirectory(const std::string &computeTask = "")
@@ -347,9 +369,10 @@ void Vasp::performDielectricCalculation()
 void Vasp::performBandStructureCalculation()
 {
     fs::current_path(computeDir);
-    // Prepare a directory for the band structure calculation
+
     bandDir = prepareDirectory(BAND_DIR);
     scfDir = prepareDirectory(SCF_DIR);
+
     //
     //  1：进行scf计算
     //      重要参数： NSW = 0
@@ -367,6 +390,10 @@ void Vasp::performBandStructureCalculation()
     // NOTE: 注意这里是从结构优化目录中复制文件而非静态计算目录
     fs_copy_files({optDir / WAVECAR, optDir / CHGCAR, optDir / INCAR}, scfDir);
 
+    std::map<std::string, std::string> incarOptions = {{"NSW", "0"}, {"IBRION", "-1"}, {"LWAVE", ".T."}, {"LCHARG", ".T."}};
+
+    modifyINCAR(scfDir / INCAR, incarOptions);
+
     fs::current_path(scfDir);
 
     // Run VASP for SCF calculation
@@ -383,25 +410,23 @@ void Vasp::performBandStructureCalculation()
     //      LMAXMIX = 4 有d轨道电子设4，f轨道电子设6
     //      SAXIS = 0 0 1 控制磁矩方向
     //      MAGMOM = 按坐标填磁矩
-    // 修改 INCAR 文件
-    std::ofstream incar(INCAR);
-    incar << "NSW = 0\n";
-    incar << "IBRION = -1\n";
-    incar << "LWAVE = .F.\n";
-    incar << "LCHARG = .F.\n";
-    incar << "LORBIT = 11\n";
-    incar << "LSORBIT = .T.\n";
-    incar << "GGA_COMPAT = .FALSE.\n";
-    incar << "LMAXMIX = 4\n";
-    incar << "SAXIS = 0 0 1\n";
-    incar.close();
 
+    fs_copy_all_files(scfDir, bandDir);
+
+    fs::current_path(bandDir);
 
     // TODO: 实际上维度需要根据材料决定，这里先默认为3
     generateINCAR("BS", true, 3);
+    
+    // 修改 INCAR 文件
+    incarOptions = {{"NSW", "0"}, {"IBRION", "-1"}, {"LWAVE", ".F."}, {"LCHARG", ".F."}, {"LORBIT", "11"}, {"LSORBIT", ".T."}, {"GGA_COMPAT", ".FALSE."}, {"LMAXMIX", "4"}, {"SAXIS", "0 0 1"}};
+    modifyINCAR(scfDir / INCAR, incarOptions);
+
+    // 修改K-PATH为KPOINTS
+    fs::rename("KPATH.in", KPOINTS);
 
     // Run VASP for band structure calculation
-    runCommand("mpirun -np 4 vasp_std > vasp_band.log");
+    runCommand("mpirun -np 4 vasp_std > vasp_band_nscf.log");
 }
 
 int main(int argc, char *argv[])
