@@ -45,7 +45,7 @@ public:
     }
 
     // prepareDirectory() 函数用于为每次 VASP 计算准备一个新的目录
-    std::string prepareDirectory(const std::string &computeTask);
+    std::string prepareDirectory(const std::string &computeTask = "");
     int generateKPOINTS();
     void generateINCAR(const std::string &INCAROptions, bool isSCF, int dimension);
     void generateInputFiles(const std::string &poscarPath);
