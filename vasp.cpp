@@ -343,18 +343,18 @@ void Vasp::performDielectricCalculation()
 {
     fs::current_path(computeDir);
     // Prepare a directory for the dielectric calculation
-    dielectricDir = prepareDirectory(DIELECTRIC_DIR);
+    permittivityDir = prepareDirectory(PERMITTIVITY_DIR);
 
     // Copy the input files to the dielectric calculation directory
-    fs_copy_files({POTCAR, KPOINTS}, dielectricDir);
+    fs_copy_files({POTCAR, KPOINTS}, permittivityDir);
 
     // Copy the CONTCAR file from the structure optimization directory
-    fs::copy_file(fs::path(optDir) / CONTCAR, dielectricDir / POSCAR, fs::copy_option::overwrite_if_exists);
+    fs::copy_file(fs::path(optDir) / CONTCAR, permittivityDir / POSCAR, fs::copy_option::overwrite_if_exists);
 
     // Copy the WAVECAR file and CHGCAR file from the static calculation directory
-    fs_copy_files({staticDir / WAVECAR, staticDir / CHGCAR}, dielectricDir);
+    fs_copy_files({staticDir / WAVECAR, staticDir / CHGCAR}, permittivityDir);
 
-    fs::current_path(dielectricDir);
+    fs::current_path(permittivityDir);
 
     generateINCAR("EC");
     // Modify INCAR for dielectric calculation
@@ -392,9 +392,9 @@ void Vasp::performBandStructureCalculation()
 
     std::map<std::string, std::string> incarOptions = {{"NSW", "0"}, {"IBRION", "-1"}, {"LWAVE", ".T."}, {"LCHARG", ".T."}};
 
-    modifyINCAR(scfDir / INCAR, incarOptions);
-
     fs::current_path(scfDir);
+
+    modifyINCAR(INCAR, incarOptions);
 
     // Run VASP for SCF calculation
     runCommand("mpirun -np 4 vasp_std > vasp_band_scf.log");
@@ -439,7 +439,7 @@ void Vasp::performThermalExpansionCalculation()
     // Copy the CONTCAR file from the structure optimization directory
     fs::copy_file(fs::path(optDir) / CONTCAR, thermalExpansionDir / POSCAR, fs::copy_option::overwrite_if_exists);
 
-    // use prepared INCAR file
+    // Use prepared INCAR file
     fs::copy_file(rootDir / CONFIG_DIR / "thermalExpansion.INCAR", thermalExpansionDir / INCAR, fs::copy_option::overwrite_if_exists);
 
     fs::copy_file(rootDir / CONFIG_DIR / "mesh.conf", thermalExpansionDir / "mesh.conf", fs::copy_option::overwrite_if_exists);
@@ -450,6 +450,36 @@ void Vasp::performThermalExpansionCalculation()
 
     std::string command = "bash ./thermalExpansionAnalysis.sh";
     runCommand(command);
+}
+
+void Vasp::performConductivityCalculation()
+{
+    fs::current_path(computeDir);
+    fs::path conductivityDir = prepareDirectory(CONDUCTIVITY_DIR);
+
+    fs_copy_files({POTCAR, INCAR}, conductivityDir);
+
+    // Copy the CONTCAR file from the structure optimization directory
+    fs::copy_file(fs::path(optDir) / CONTCAR, conductivityDir / POSCAR, fs::copy_option::overwrite_if_exists);
+
+    fs_copy_files({optDir / WAVECAR, optDir / CHGCAR, optDir / INCAR}, conductivityDir);
+
+    fs::current_path(conductivityDir);
+
+    modifyINCAR(INCAR, {{"NSW", "0"}, {"SIGMA", "0.05"}, {"LWAVE", ".TRUE."}, {"LCHARG", ".TRUE."}, {"NEDOS", "2001"}});
+
+    // Generate KPOINTS file
+    VaspkitManager &vaspkit = VaspkitManager::getInstance();
+    vaspkit.signleCommand("681\n");
+
+    runCommand("mpirun -np 4 vasp_std > vasp_conductivity.log");
+
+    //Perfrom BoltzTraP calculation
+    fs::copy_file( rootDir / CONFIG / "VPKIT.in", connductivityDir / "VPKIT.in", fs::copy_option::overwrite_if_exists);
+
+    vaspkit.singleCommand("682\n");
+
+    // TODO: 处理电导率和载流子浓度的输出文件
 }
 
 void Vasp::useHistoryOptDir()

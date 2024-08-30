@@ -16,8 +16,11 @@
 #define OPT_DIR "opt_calc"
 #define SCF_DIR "scf_calc"
 #define BAND_DIR "band_calc"
-#define DIELECTRIC_DIR "dielectric_calc"
+#define PERMITTIVITY_DIR "dielectric_calc"
 #define THERMAL_EXPANSION_DIR "thermal_expansion_calc"
+#define CONDUCTIVITY_DIR "conductivity_calc"
+
+
 #define CONFIG_DIR "config"
 #define SCRIPT_DIR "scripts"
 
@@ -54,7 +57,7 @@ public:
     void performDielectricCalculation();
     void performBandStructureCalculation();
     void performThermalExpansionCalculation();
-
+    void performConductivityCalculation();
     void useHistoryOptDir();
 private:
     fs::path rootDir;       // 整个计算的根目录
@@ -63,7 +66,7 @@ private:
     fs::path staticDir;     // 静态计算的目录
     fs::path bandDir;       // 带结构计算的目录
     fs::path scfDir;        // 自洽计算的目录
-    fs::path dielectricDir; // 介电常数计算的目录
+    fs::path permittivityDir; // 介电常数计算的目录
     fs::path thermalExpansionDir; // 热膨胀计算的目录
-
+    fs::path conductivityDir; // 电导率计算的目录
 };
