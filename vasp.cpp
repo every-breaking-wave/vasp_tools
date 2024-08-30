@@ -470,12 +470,12 @@ void Vasp::performConductivityCalculation()
 
     // Generate KPOINTS file
     VaspkitManager &vaspkit = VaspkitManager::getInstance();
-    vaspkit.signleCommand("681\n");
+    vaspkit.singleCommand("681\n");
 
     runCommand("mpirun -np 4 vasp_std > vasp_conductivity.log");
 
     //Perfrom BoltzTraP calculation
-    fs::copy_file( rootDir / CONFIG / "VPKIT.in", connductivityDir / "VPKIT.in", fs::copy_option::overwrite_if_exists);
+    fs::copy_file( rootDir / CONFIG_DIR / "VPKIT.in", conductivityDir / "VPKIT.in", fs::copy_option::overwrite_if_exists);
 
     vaspkit.singleCommand("682\n");
 
