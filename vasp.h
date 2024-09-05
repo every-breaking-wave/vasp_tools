@@ -16,7 +16,7 @@
 #define OPT_DIR "opt_calc"
 #define SCF_DIR "scf_calc"
 #define BAND_DIR "band_calc"
-#define PERMITTIVITY_DIR "dielectric_calc"
+#define DIELECTRIC_DIR "dielectric_calc"
 #define THERMAL_EXPANSION_DIR "thermal_expansion_calc"
 #define CONDUCTIVITY_DIR "conductivity_calc"
 
@@ -35,7 +35,7 @@
 
 // output name
 #define DENSITY "DENSITY"
-#define PERMITTIVITY "PERMITTIVITY"
+#define DIELECTRIC "DIELECTRIC"
 #define THERMAL_EXPANSION "THERMAL_EXPANSION"
 #define THERMAL_CONDUCTIVITY "THERMAL_CONDUCTIVITY"
 #define CONDUCTIVITY "CONDUCTIVITY"
@@ -45,7 +45,7 @@
 // 对应的单位
 std::map<std::string, std::string> units = {
     {DENSITY, "g/cm^3"},
-    {PERMITTIVITY, ""},
+    {DIELECTRIC, ""},
     {THERMAL_EXPANSION, "1/K"},
     {THERMAL_CONDUCTIVITY, "W/mK"},
     {CONDUCTIVITY, "S/m"},
@@ -65,28 +65,12 @@ public:
             exit(EXIT_FAILURE);
         }
         results_.emplace(BANDGAP, "");
-        results_.emplace(PERMITTIVITY, "");
+        results_.emplace(DIELECTRIC, "");
         results_.emplace(THERMAL_CONDUCTIVITY, "");
         results_.emplace(THERMAL_EXPANSION, "");
         results_.emplace(CONDUCTIVITY, "");
         results_.emplace(MOBILITY, "");
     }
-
-
-
-private:
-    fs::path root_dir_;             // 整个计算的根目录
-    fs::path compute_dir_;          // 一次完整vasp计算的目录
-    fs::path opt_dir_;              // 结构优化计算的目录
-    fs::path static_dir_;           // 静态计算的目录
-    fs::path band_dir_;             // 带结构计算的目录
-    fs::path scf_dir_;              // 自洽计算的目录
-    fs::path dielectric_dir_;       // 介电常数计算的目录
-    fs::path thermal_expansion_dir_; // 热膨胀计算的目录
-    fs::path conductivity_dir_;    // 电导率计算的目录
-    // key-value pairs for result, eg: bandgap=1.2
-    std::map<std::string, std::string> results_;
-
 
     // PrepareDirectory() 函数用于为每次 VASP 计算准备一个新的目录
     std::string PrepareDirectory(const std::string &computeTask);
@@ -101,5 +85,18 @@ private:
     void PerformConductivityCalculation();
     void UseHistoryOptDir();
     void StoreResults();
+
+private:
+    fs::path root_dir_;             // 整个计算的根目录
+    fs::path compute_dir_;          // 一次完整vasp计算的目录
+    fs::path opt_dir_;              // 结构优化计算的目录
+    fs::path static_dir_;           // 静态计算的目录
+    fs::path band_dir_;             // 带结构计算的目录
+    fs::path scf_dir_;              // 自洽计算的目录
+    fs::path dielectric_dir_;       // 介电常数计算的目录
+    fs::path thermal_expansion_dir_; // 热膨胀计算的目录
+    fs::path conductivity_dir_;    // 电导率计算的目录
+    // key-value pairs for result, eg: bandgap=1.2
+    std::map<std::string, std::string> results_;
 
 };

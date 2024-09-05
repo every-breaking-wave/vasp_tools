@@ -498,7 +498,7 @@ void Vasp::PerformDielectricCalculation()
             sum += extractTensorValue();
         }
     }
-    results_[PERMITTIVITY] = std::to_string(sum);
+    results_[DIELECTRIC] = std::to_string(sum);
     std::cout << "Dielectric constant: " << sum << std::endl;
 }
 
@@ -609,28 +609,28 @@ void Vasp::PerformThermalExpansionCalculation()
 
 void Vasp::PerformConductivityCalculation()
 {
-    fs::current_path(computeDir);
-    fs::path conductivity_dir_ = prepareDirectory(CONDUCTIVITY_DIR);
+    fs::current_path(compute_dir_);
+    fs::path conductivity_dir_ = PrepareDirectory(CONDUCTIVITY_DIR);
 
-    fs_copy_files({POTCAR, INCAR}, conductivity_dir_);
+    CopyFiles({POTCAR, INCAR}, conductivity_dir_);
 
     // Copy the CONTCAR file from the structure optimization directory
-    fs::copy_file(fs::path(optDir) / CONTCAR, conductivity_dir_ / POSCAR, fs::copy_option::overwrite_if_exists);
+    fs::copy_file(fs::path(opt_dir_) / CONTCAR, conductivity_dir_ / POSCAR, fs::copy_option::overwrite_if_exists);
 
-    fs_copy_files({optDir / WAVECAR, optDir / CHGCAR, optDir / INCAR}, conductivity_dir_);
+    CopyFiles({opt_dir_ / WAVECAR, opt_dir_ / CHGCAR, opt_dir_ / INCAR}, conductivity_dir_);
 
     fs::current_path(conductivity_dir_);
 
-    modifyINCAR(INCAR, {{"NSW", "0"}, {"SIGMA", "0.05"}, {"LWAVE", ".TRUE."}, {"LCHARG", ".TRUE."}, {"NEDOS", "2001"}});
+    ModifyINCAR(INCAR, {{"NSW", "0"}, {"SIGMA", "0.05"}, {"LWAVE", ".TRUE."}, {"LCHARG", ".TRUE."}, {"NEDOS", "2001"}});
 
     // Generate KPOINTS file
     VaspkitManager &vaspkit = VaspkitManager::getInstance();
     vaspkit.singleCommand("681\n");
 
-    runCommand("mpirun -np 4 vasp_std > vasp_conductivity.log");
+    RunCommand("mpirun -np 4 vasp_std > vasp_conductivity.log");
 
     //Perfrom BoltzTraP calculation
-    fs::copy_file( rootDir / CONFIG_DIR / "VPKIT.in", conductivity_dir_ / "VPKIT.in", fs::copy_option::overwrite_if_exists);
+    fs::copy_file( root_dir_ / CONFIG_DIR / "VPKIT.in", conductivity_dir_ / "VPKIT.in", fs::copy_option::overwrite_if_exists);
 
     vaspkit.singleCommand("682\n");
 
