@@ -64,7 +64,7 @@ done
 
 
 #第6步
-phonopy-qha v-e.dat ./CP/thermal_properties-{1..11}.yaml > thermo.dat
+phonopy-qha v-e.dat ./CP/thermal_properties-{1..21}.yaml > thermo.dat
 
 #第7步
 # 确保thermal_expansion.dat文件生成

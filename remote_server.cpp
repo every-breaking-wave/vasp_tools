@@ -102,6 +102,7 @@ void RemoteServer::PerformVaspCompute(const std::string &poscarPath)
     vasp->PrepareDirectory("");
 
     std::cout << "Generating input files..." << std::endl;
+    // this will move the POSCAR file to the compute directory and generate the input files
     vasp->GenerateInputFiles(poscarPath);
 
     std::cout << "Performing structure optimization..." << std::endl;
@@ -115,10 +116,14 @@ void RemoteServer::PerformVaspCompute(const std::string &poscarPath)
 
     std::cout << "Performing band structure calculation..." << std::endl;
     vasp->PerformBandStructureCalculation();
-    
+
+    std::cout << "Performing conductivity calculation..." << std::endl;
+    vasp->PerformConductivityCalculation();
+
     std::cout << "Performing thermal expansion calculation..." << std::endl;
     std::cout << "This could take a long time." << std::endl;
     vasp->PerformThermalExpansionCalculation();
 
     std::cout << "VASP calculation complete." << std::endl;
+    vasp->StoreResults();
 }

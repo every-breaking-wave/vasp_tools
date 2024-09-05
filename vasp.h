@@ -96,7 +96,6 @@ private:
     fs::path dielectric_dir_;       // 介电常数计算的目录
     fs::path thermal_expansion_dir_; // 热膨胀计算的目录
     fs::path conductivity_dir_;    // 电导率计算的目录
-    // key-value pairs for result, eg: bandgap=1.2
-    std::map<std::string, std::string> results_;
 
+    std::map<std::string, std::string> results_;
 };
