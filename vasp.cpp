@@ -10,7 +10,7 @@
 
 ////////////////////////// Utility Functions //////////////////////////
 
-void fs_copy_files(const std::vector<fs::path> &source_files, const fs::path &destination_dir)
+void CopyFiles(const std::vector<fs::path> &source_files, const fs::path &destination_dir)
 {
     try
     {
@@ -37,7 +37,7 @@ void fs_copy_files(const std::vector<fs::path> &source_files, const fs::path &de
     }
 }
 
-void fs_copy_all_files(const fs::path &source_dir, const fs::path &destination_dir)
+void CopyAllFiles(const fs::path &source_dir, const fs::path &destination_dir)
 {
     try
     {
@@ -60,7 +60,7 @@ void fs_copy_all_files(const fs::path &source_dir, const fs::path &destination_d
     }
 }
 
-void runCommand(const std::string &command)
+void RunCommand(const std::string &command)
 {
     int result = system(command.c_str());
     if (result != 0)
@@ -70,7 +70,7 @@ void runCommand(const std::string &command)
     }
 }
 
-std::string extractKmeshValue(const std::string &filename)
+std::string ExtractKmeshValue(const std::string &filename)
 {
     std::ifstream infile(filename);
     std::string line;
@@ -99,7 +99,7 @@ std::string extractKmeshValue(const std::string &filename)
     return kmeshValue;
 }
 
-void modifyINCAR(fs::path filepath, const std::map<std::string, std::string> &options)
+void ModifyINCAR(fs::path filepath, const std::map<std::string, std::string> &options)
 {
     std::ifstream infile(filepath.string());
     std::stringstream buffer;
@@ -161,23 +161,101 @@ void modifyINCAR(fs::path filepath, const std::map<std::string, std::string> &op
     outfile.close();
 }
 
+// Function to read band.dat file and extract k-points and energies
+void ReadBandDat(const std::string &file_path, std::vector<std::vector<double>> &energies)
+{
+    std::ifstream file(file_path);
+    if (!file.is_open())
+    {
+        throw std::runtime_error("Cannot open file: " + file_path);
+    }
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+        if (!line.empty() && line[0] != '#')
+        { // Skip empty lines and comments
+            std::istringstream iss(line);
+            double k_point;
+            iss >> k_point;
+
+            std::vector<double> energy_levels;
+            double energy;
+            while (iss >> energy)
+            {
+                energy_levels.push_back(energy);
+            }
+            energies.push_back(energy_levels);
+        }
+    }
+    file.close();
+}
+
+// Function to calculate the band gap, VBM, and CBM
+void CalculateBandgap(const std::vector<std::vector<double>> &energies, double &bandgap, double &VBM, double &CBM)
+{
+    std::vector<double> VBM_list;
+    std::vector<double> CBM_list;
+
+    for (const auto &energy : energies)
+    {
+        std::vector<double> VBM_candidates;
+        std::vector<double> CBM_candidates;
+
+        for (double band : energy)
+        {
+            if (band < 0)
+            {
+                VBM_candidates.push_back(band);
+            }
+            else if (band > 0)
+            {
+                CBM_candidates.push_back(band);
+            }
+        }
+
+        if (!VBM_candidates.empty())
+        {
+            VBM_list.push_back(*std::max_element(VBM_candidates.begin(), VBM_candidates.end()));
+        }
+        if (!CBM_candidates.empty())
+        {
+            CBM_list.push_back(*std::min_element(CBM_candidates.begin(), CBM_candidates.end()));
+        }
+    }
+
+    if (VBM_list.empty())
+    {
+        throw std::runtime_error("VBM not found: no energy values below 0 eV.");
+    }
+    if (CBM_list.empty())
+    {
+        throw std::runtime_error("CBM not found: no energy values above 0 eV.");
+    }
+
+    VBM = *std::max_element(VBM_list.begin(), VBM_list.end());
+    CBM = *std::min_element(CBM_list.begin(), CBM_list.end());
+
+    bandgap = CBM - VBM;
+}
+
 ////////////////////////// Vasp Class//////////////////////////
-std::string Vasp::prepareDirectory(const std::string &computeTask = "")
+std::string Vasp::PrepareDirectory(const std::string &computeTask = "")
 {
     try
     {
-        fs::current_path(rootDir);
+        fs::current_path(root_dir_);
         std::string retDir;
         std::string timestamp = std::to_string(std::time(nullptr));
         if (computeTask.empty())
         {
-            if (computeDir.empty())
+            if (compute_dir_.empty())
             {
-                computeDir = "vasp_" + timestamp;
-                DEBUG_PRINT("computeDir: " << computeDir);
-                fs::create_directory(computeDir);
-                computeDir = rootDir / computeDir;
-                retDir = computeDir.string();
+                compute_dir_ = "vasp_" + timestamp;
+                DEBUG_PRINT("computeDir: " << compute_dir_);
+                fs::create_directory(compute_dir_);
+                compute_dir_ = root_dir_ / compute_dir_;
+                retDir = compute_dir_.string();
             }
             else
             {
@@ -187,9 +265,9 @@ std::string Vasp::prepareDirectory(const std::string &computeTask = "")
         else
         {
             // 在现有的 computeDir 中创建子任务目录
-            if (fs::is_directory(computeDir))
+            if (fs::is_directory(compute_dir_))
             {
-                fs::path taskDir = fs::path(computeDir) / computeTask;
+                fs::path taskDir = fs::path(compute_dir_) / computeTask;
                 if (!fs::is_directory(taskDir))
                 {
                     std::cout << "Creating sub-directory: " << taskDir.string() << std::endl;
@@ -202,7 +280,7 @@ std::string Vasp::prepareDirectory(const std::string &computeTask = "")
                 throw std::runtime_error("Error: computeDir is not a valid directory.");
             }
         }
-        fs::current_path(computeDir);
+        fs::current_path(compute_dir_);
         return retDir;
     }
     catch (const fs::filesystem_error &ex)
@@ -217,12 +295,12 @@ std::string Vasp::prepareDirectory(const std::string &computeTask = "")
     }
 }
 
-int Vasp::generateKPOINTS()
+int Vasp::GenerateKPOINTS()
 {
     // 启动 VASPKIT 进程
     VaspkitManager &vaspkit = VaspkitManager::getInstance();
 
-    vaspkit.startVaspkit((*computeDir.end()).string());
+    vaspkit.startVaspkit((*compute_dir_.end()).string());
 
     vaspkit.sendInputToVaspkit("1\n");
     vaspkit.sendInputToVaspkit("102\n");
@@ -232,7 +310,7 @@ int Vasp::generateKPOINTS()
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     // 从输出文件中提取 Kmesh 值
-    std::string kmeshValue = extractKmeshValue(vaspkit.getOutputFilename());
+    std::string kmeshValue = ExtractKmeshValue(vaspkit.getOutputFilename());
     if (!kmeshValue.empty())
     {
         vaspkit.sendInputToVaspkit(kmeshValue + "\n");
@@ -248,10 +326,10 @@ int Vasp::generateKPOINTS()
     return 0;
 }
 
-void Vasp::generateINCAR(const std::string &INCAROptions, bool isSCF = false, int dimension = 0)
+void Vasp::GenerateINCAR(const std::string &INCAROptions, bool isSCF = false, int dimension = 0)
 {
     VaspkitManager &vaspkit = VaspkitManager::getInstance();
-    vaspkit.startVaspkit((*computeDir.end()).string());
+    vaspkit.startVaspkit((*compute_dir_.end()).string());
     if (isSCF) // SCF calculation(静态自洽计算)
     {
         switch (dimension)
@@ -281,51 +359,51 @@ void Vasp::generateINCAR(const std::string &INCAROptions, bool isSCF = false, in
     vaspkit.stopVaspkit();
 }
 
-void Vasp::generateInputFiles(const std::string &poscarPath)
+void Vasp::GenerateInputFiles(const std::string &poscarPath)
 {
-    fs::current_path(computeDir);
+    fs::current_path(compute_dir_);
     // Copy the provided POSCAR file
     fs::copy_file(poscarPath, POSCAR, fs::copy_option::overwrite_if_exists);
     // Generate INCAR, POTCAR, and KPOINTS using VASPKIT
-    runCommand("vaspkit -task 103 2>&1");
-    if (generateKPOINTS() != 0)
+    RunCommand("vaspkit -task 103 2>&1");
+    if (GenerateKPOINTS() != 0)
     {
         exit(EXIT_FAILURE);
     }
-    generateINCAR("SR");
+    GenerateINCAR("SR");
 }
 
-void Vasp::performStructureOptimization()
+void Vasp::PerformStructureOptimization()
 {
-    fs::current_path(computeDir);
+    fs::current_path(compute_dir_);
     // 准备一个结构优化专门的目录
     DEBUG_PRINT("Preparing structure optimization directory...");
-    optDir = prepareDirectory(OPT_DIR);
+    opt_dir_ = PrepareDirectory(OPT_DIR);
 
     // Copy the input files to the structure optimization directory
     //
-    fs_copy_files({POSCAR, INCAR, POTCAR, KPOINTS}, optDir);
+    CopyFiles({POSCAR, INCAR, POTCAR, KPOINTS}, opt_dir_);
 
-    fs::current_path(optDir);
+    fs::current_path(opt_dir_);
 
     // Run VASP for structure optimization
-    runCommand("mpirun -np 4 vasp_std > vasp_opt.log"); // Assuming MPI version of VASP
+    RunCommand("mpirun -np 4 vasp_std > vasp_opt.log"); // Assuming MPI version of VASP
 }
 
-void Vasp::performStaticCalculation()
+void Vasp::PerformStaticCalculation()
 {
-    fs::current_path(computeDir);
+    fs::current_path(compute_dir_);
     // Prepare a directory for the static calculation
-    staticDir = prepareDirectory(STATIC_DIR);
+    static_dir_ = PrepareDirectory(STATIC_DIR);
 
-    fs_copy_files({POTCAR, KPOINTS}, staticDir);
+    CopyFiles({POTCAR, KPOINTS}, static_dir_);
 
     // Copy the CONTCAR file from the OPTdir
-    fs::copy_file(fs::path(optDir) / CONTCAR, staticDir / POSCAR, fs::copy_option::overwrite_if_exists);
+    fs::copy_file(fs::path(opt_dir_) / CONTCAR, static_dir_ / POSCAR, fs::copy_option::overwrite_if_exists);
 
-    fs::current_path(staticDir);
+    fs::current_path(static_dir_);
 
-    generateINCAR("ST");
+    GenerateINCAR("ST");
     // Modify INCAR for static calculation
     // std::ofstream incar(INCAR);
     // incar << "ISTART = 0\n";
@@ -336,42 +414,100 @@ void Vasp::performStaticCalculation()
     // incar.close();
 
     // Run VASP for static calculation
-    runCommand("mpirun -np 4 vasp_std > vasp_static.log"); // Assuming MPI version of VASP
+    RunCommand("mpirun -np 4 vasp_std > vasp_static.log"); // Assuming MPI version of VASP
 }
 
-void Vasp::performDielectricCalculation()
+void Vasp::PerformDielectricCalculation()
 {
-    fs::current_path(computeDir);
+    fs::current_path(compute_dir_);
     // Prepare a directory for the dielectric calculation
-    dielectricDir = prepareDirectory(DIELECTRIC_DIR);
+    dielectric_dir_ = PrepareDirectory(DIELECTRIC_DIR);
 
     // Copy the input files to the dielectric calculation directory
-    fs_copy_files({POTCAR, KPOINTS}, dielectricDir);
+    CopyFiles({POTCAR, KPOINTS}, dielectric_dir_);
 
     // Copy the CONTCAR file from the structure optimization directory
-    fs::copy_file(fs::path(optDir) / CONTCAR, dielectricDir / POSCAR, fs::copy_option::overwrite_if_exists);
+    fs::copy_file(fs::path(opt_dir_) / CONTCAR, dielectric_dir_ / POSCAR, fs::copy_option::overwrite_if_exists);
 
     // Copy the WAVECAR file and CHGCAR file from the static calculation directory
-    fs_copy_files({staticDir / WAVECAR, staticDir / CHGCAR}, dielectricDir);
+    CopyFiles({static_dir_ / WAVECAR, static_dir_ / CHGCAR}, dielectric_dir_);
 
-    fs::current_path(dielectricDir);
+    fs::current_path(dielectric_dir_);
 
-    generateINCAR("EC");
-    // Modify INCAR for dielectric calculation
-    // std::ofstream incar(INCAR);
-    // incar << "LEPSILON = .TRUE.\n";
-    // incar.close();
+    // GenerateINCAR("EC");
 
-    // Run VASP for dielectric calculation
-    runCommand("mpirun -np 4 vasp_std > vasp_dielectric.log");
+    // ModifyINCAR(INCAR, {{"IBRION", "8"}});
+    // // Modify INCAR for dielectric calculation
+    // // std::ofstream incar(INCAR);
+    // // incar << "LEPSILON = .TRUE.\n";
+    // // incar.close();
+
+    // // Run VASP for dielectric calculation
+    // RunCommand("mpirun -np 4 vasp_std > vasp_dielectric.log");
+
+    // Extract the dielectric constant from the OUTCAR file
+    std::ifstream outcar("OUTCAR");
+    std::string line;
+    double sum = 0.0;
+    bool found = false;
+    // 写一个lambda表达式，用于提取张量的值
+    // 实际上，这里应该提取张量的值，此处将三个方向的值简单相加并平均
+    //  MACROSCOPIC STATIC DIELECTRIC TENSOR (including local field effects in DFT)
+    //  ------------------------------------------------------
+    //            2.481425    -0.000000     0.000000
+    //           -0.000000     2.481425    -0.000000
+    //           -0.000000     0.000000     2.517204
+    //  ------------------------------------------------------
+    //  格式如上，提取三个对角线上的值，相加并除以3
+    auto extractTensorValue = [&line, &outcar]() -> double
+    {
+        double value = 0.0;
+        std::string token;
+        // Skip the first line
+        std::getline(outcar, line);
+        for (int i = 0; i < 3; i++)
+        {
+            std::getline(outcar, line);
+            std::istringstream iss(line);
+            for (int j = 0; j < 3; j++)
+            {
+                iss >> token;
+                if (i == j)
+                {
+                    value += std::stod(token);
+                }
+            }
+        }
+        return value / 3.0;
+    };
+
+    while (std::getline(outcar, line))
+    {
+        // 如果是第一次碰到" MACROSCOPIC STATIC DIELECTRIC TENSOR (including local field effects in DFT)"
+        // 那么接下来的三行就是我们需要的数据
+        if (line.find("MACROSCOPIC STATIC DIELECTRIC TENSOR (including local field effects in DFT)") != std::string::npos)
+        {
+            if (!found)
+            {
+                sum += extractTensorValue();
+            }
+            found = true;
+        }
+        else if (line.find(" MACROSCOPIC STATIC DIELECTRIC TENSOR IONIC CONTRIBUTION") != std::string::npos)
+        {
+            sum += extractTensorValue();
+        }
+    }
+    results_[PERMITTIVITY] = std::to_string(sum);
+    std::cout << "Dielectric constant: " << sum << std::endl;
 }
 
-void Vasp::performBandStructureCalculation()
+void Vasp::PerformBandStructureCalculation()
 {
-    fs::current_path(computeDir);
+    fs::current_path(compute_dir_);
 
-    bandDir = prepareDirectory(BAND_DIR);
-    scfDir = prepareDirectory(SCF_DIR);
+    band_dir_ = PrepareDirectory(BAND_DIR);
+    scf_dir_ = PrepareDirectory(SCF_DIR);
 
     //
     //  1：进行scf计算
@@ -382,22 +518,22 @@ void Vasp::performBandStructureCalculation()
     //      KPONITS 该参数需要比结构优化要更精确一点，如果在结构优化时取得比较粗糙，那么在这里建议要取得更密一点
     //
 
-    fs_copy_files({POTCAR, KPOINTS}, scfDir);
+    CopyFiles({POTCAR, KPOINTS}, scf_dir_);
 
     // Copy the CONTCAR file from OPTdir
-    fs::copy_file(fs::path(optDir) / CONTCAR, scfDir / POSCAR, fs::copy_option::overwrite_if_exists);
+    fs::copy_file(fs::path(opt_dir_) / CONTCAR, scf_dir_ / POSCAR, fs::copy_option::overwrite_if_exists);
 
     // NOTE: 注意这里是从结构优化目录中复制文件而非静态计算目录
-    fs_copy_files({optDir / WAVECAR, optDir / CHGCAR, optDir / INCAR}, scfDir);
+    CopyFiles({opt_dir_ / WAVECAR, opt_dir_ / CHGCAR, opt_dir_ / INCAR}, scf_dir_);
 
     std::map<std::string, std::string> incarOptions = {{"NSW", "0"}, {"IBRION", "-1"}, {"LWAVE", ".T."}, {"LCHARG", ".T."}};
 
-    modifyINCAR(scfDir / INCAR, incarOptions);
+    ModifyINCAR(scf_dir_ / INCAR, incarOptions);
 
-    fs::current_path(scfDir);
+    fs::current_path(scf_dir_);
 
     // Run VASP for SCF calculation
-    runCommand("mpirun -np 4 vasp_std > vasp_band_scf.log");
+    RunCommand("mpirun -np 4 vasp_std > vasp_band_scf.log");
 
     // 2：进行带结构计算
     //      重要参数： NSW = 0
@@ -411,54 +547,73 @@ void Vasp::performBandStructureCalculation()
     //      SAXIS = 0 0 1 控制磁矩方向
     //      MAGMOM = 按坐标填磁矩
 
-    fs_copy_all_files(scfDir, bandDir);
+    CopyAllFiles(scf_dir_, band_dir_);
 
-    fs::current_path(bandDir);
+    band_dir_ = compute_dir_ / BAND_DIR;
+    fs::current_path(band_dir_);
 
     // TODO: 实际上维度需要根据材料决定，这里先默认为3
-    generateINCAR("BS", true, 3);
+    GenerateINCAR("BS", true, 3);
 
     // 修改 INCAR 文件
     incarOptions = {{"NSW", "0"}, {"IBRION", "-1"}, {"LWAVE", ".F."}, {"LCHARG", ".F."}, {"LORBIT", "11"}, {"LSORBIT", ".T."}, {"GGA_COMPAT", ".FALSE."}, {"LMAXMIX", "4"}, {"SAXIS", "0 0 1"}};
-    modifyINCAR(scfDir / INCAR, incarOptions);
+    ModifyINCAR(scf_dir_ / INCAR, incarOptions);
 
     // 修改K-PATH为KPOINTS
     fs::rename("KPATH.in", KPOINTS);
 
     // Run VASP for band structure calculation
-    runCommand("mpirun -np 4 vasp_std > vasp_band_nscf.log");
+    RunCommand("mpirun -np 4 vasp_std > vasp_band_nscf.log");
+
+    // Extract the band gap from the OUTCAR file
+    std::vector<std::vector<double>> energies;
+    ReadBandDat("BAND.dat", energies);
+    double bandgap, VBM, CBM;
+    CalculateBandgap(energies, bandgap, VBM, CBM);
+
+    results_[BANDGAP] = std::to_string(bandgap);
 }
 
-void Vasp::performThermalExpansionCalculation()
+void Vasp::PerformThermalExpansionCalculation()
 {
-    fs::current_path(computeDir);
-    thermalExpansionDir = prepareDirectory(THERMAL_EXPANSION_DIR);
+    fs::current_path(compute_dir_);
+    thermal_expansion_dir_ = PrepareDirectory(THERMAL_EXPANSION_DIR);
 
-    fs_copy_files({POTCAR, KPOINTS}, thermalExpansionDir);
+    CopyFiles({POTCAR, KPOINTS}, thermal_expansion_dir_);
 
     // Copy the CONTCAR file from the structure optimization directory
-    fs::copy_file(fs::path(optDir) / CONTCAR, thermalExpansionDir / POSCAR, fs::copy_option::overwrite_if_exists);
+    fs::copy_file(fs::path(opt_dir_) / CONTCAR, thermal_expansion_dir_ / POSCAR, fs::copy_option::overwrite_if_exists);
 
     // use prepared INCAR file
-    fs::copy_file(rootDir / CONFIG_DIR / "thermalExpansion.INCAR", thermalExpansionDir / INCAR, fs::copy_option::overwrite_if_exists);
+    fs::copy_file(root_dir_ / CONFIG_DIR / "thermalExpansion.INCAR", thermal_expansion_dir_ / INCAR, fs::copy_option::overwrite_if_exists);
 
-    fs::copy_file(rootDir / CONFIG_DIR / "mesh.conf", thermalExpansionDir / "mesh.conf", fs::copy_option::overwrite_if_exists);
+    fs::copy_file(root_dir_ / CONFIG_DIR / "mesh.conf", thermal_expansion_dir_ / "mesh.conf", fs::copy_option::overwrite_if_exists);
 
-    fs::copy_file(rootDir / SCRIPT_DIR / "thermalExpansionAnalysis.sh", thermalExpansionDir / "thermalExpansionAnalysis.sh", fs::copy_option::overwrite_if_exists);
+    fs::copy_file(root_dir_ / SCRIPT_DIR / "thermalExpansionAnalysis.sh", thermal_expansion_dir_ / "thermalExpansionAnalysis.sh", fs::copy_option::overwrite_if_exists);
 
-    fs::current_path(thermalExpansionDir);
+    fs::copy_file(root_dir_ / SCRIPT_DIR / "computeThermalExpansion.py", thermal_expansion_dir_ / "computeThermalExpansion.py", fs::copy_option::overwrite_if_exists);
+
+    fs::current_path(thermal_expansion_dir_);
 
     std::string command = "bash ./thermalExpansionAnalysis.sh";
-    runCommand(command);
+    
+    RunCommand(command);
+
+    // Extract the thermal expansion coefficient from the output file
+    std::ifstream outfile("thermal_expansion_result.txt");
+    std::string line;
+    std::getline(outfile, line);
+    results_[THERMAL_EXPANSION] = line;
+    std::cout << "Thermal expansion coefficient: " << line << std::endl;
 }
 
-void Vasp::useHistoryOptDir()
+void Vasp::UseHistoryOptDir()
 {
     std::cout << "Looking for previous structure optimization directory..." << std::endl;
-    fs::current_path(rootDir);
-    if (fs::is_directory(optDir))
+    fs::current_path(root_dir_);
+    if (fs::is_directory(opt_dir_))
     {
-        fs::current_path(optDir);
+        fs::current_path(opt_dir_);
     }
     else
     {
@@ -466,7 +621,7 @@ void Vasp::useHistoryOptDir()
         fs::directory_iterator end;
         fs::path latestDir;
         std::time_t latestTime = 0;
-        for (fs::directory_iterator it(rootDir); it != end; ++it)
+        for (fs::directory_iterator it(root_dir_); it != end; ++it)
         {
             if (fs::is_directory(it->path()) && it->path().filename().string().find("vasp_") == 0)
             {
@@ -481,11 +636,13 @@ void Vasp::useHistoryOptDir()
         if (!latestDir.empty())
         {
             std::cout << "Found previous structure optimization directory: " << latestDir << std::endl;
-            computeDir = latestDir;
-            optDir = latestDir / OPT_DIR;
+            compute_dir_ = latestDir;
+            opt_dir_ = latestDir / OPT_DIR;
+            static_dir_ = latestDir / STATIC_DIR;
             fs::current_path(latestDir);
-            std::cout << "current computeDir: " << computeDir << std::endl;
-            std::cout << "current optDir: " << optDir << std::endl;
+            std::cout << "current computeDir: " << compute_dir_ << std::endl;
+            std::cout << "current optDir: " << opt_dir_ << std::endl;
+            std::cout << "current staticDir: " << static_dir_ << std::endl;
         }
         else
         {
@@ -494,3 +651,13 @@ void Vasp::useHistoryOptDir()
     }
 }
 
+void Vasp::StoreResults()
+{
+    fs::current_path(compute_dir_);
+    std::ofstream resultsFile("results.txt");
+    for (const auto &result : results_)
+    {
+        resultsFile << result.first << " = " << result.second << " " << units[result.first] << std::endl;
+    }
+    resultsFile.close();
+}

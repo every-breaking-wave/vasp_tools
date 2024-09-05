@@ -30,40 +30,69 @@
 #define WAVECAR "WAVECAR"
 #define CHGCAR "CHGCAR"
 
+// output name
+#define DENSITY "DENSITY"
+#define PERMITTIVITY "PERMITTIVITY"
+#define THERMAL_EXPANSION "THERMAL_EXPANSION"
+#define THERMAL_CONDUCTIVITY "THERMAL_CONDUCTIVITY"
+#define CONDUCTIVITY "CONDUCTIVITY"
+#define MOBILITY "MOBILITY"
+#define BANDGAP "BANDGAP"
+
+// 对应的单位
+std::map<std::string, std::string> units = {
+    {DENSITY, "g/cm^3"},
+    {PERMITTIVITY, ""},
+    {THERMAL_EXPANSION, "1/K"},
+    {THERMAL_CONDUCTIVITY, "W/mK"},
+    {CONDUCTIVITY, "S/m"},
+    {MOBILITY, "cm^2/Vs"},
+    {BANDGAP, "eV"}};
+
 namespace fs = boost::filesystem;
 
 class Vasp
 {
 public:
-    Vasp(const std::string &rootDir) : rootDir(rootDir)
+    Vasp(const std::string &rootDir) : root_dir_(rootDir)
     {
         if (chdir(rootDir.c_str()) != 0)
         {
             std::cerr << "Error: Failed to change directory." << std::endl;
             exit(EXIT_FAILURE);
-        }        
+        }
+        results_.emplace(BANDGAP, "");
+        results_.emplace(PERMITTIVITY, "");
+        results_.emplace(THERMAL_CONDUCTIVITY, "");
+        results_.emplace(THERMAL_EXPANSION, "");
+        results_.emplace(CONDUCTIVITY, "");
+        results_.emplace(MOBILITY, "");
     }
 
-    // prepareDirectory() 函数用于为每次 VASP 计算准备一个新的目录
-    std::string prepareDirectory(const std::string &computeTask = "");
-    int generateKPOINTS();
-    void generateINCAR(const std::string &INCAROptions, bool isSCF, int dimension);
-    void generateInputFiles(const std::string &poscarPath);
-    void performStructureOptimization();
-    void performStaticCalculation();
-    void performDielectricCalculation();
-    void performBandStructureCalculation();
-    void performThermalExpansionCalculation();
+    // PrepareDirectory() 函数用于为每次 VASP 计算准备一个新的目录
+    std::string PrepareDirectory(const std::string &computeTask);
+    int GenerateKPOINTS();
+    void GenerateINCAR(const std::string &INCAROptions, bool isSCF, int dimension);
+    void GenerateInputFiles(const std::string &poscarPath);
+    void PerformStructureOptimization();
+    void PerformStaticCalculation();
+    void PerformDielectricCalculation();
+    void PerformBandStructureCalculation();
+    void PerformThermalExpansionCalculation();
 
-    void useHistoryOptDir();
+    void UseHistoryOptDir();
+    void StoreResults();
+
 private:
-    fs::path rootDir;       // 整个计算的根目录
-    fs::path computeDir;    // 一次完整vasp计算的目录
-    fs::path optDir;        // 结构优化计算的目录
-    fs::path staticDir;     // 静态计算的目录
-    fs::path bandDir;       // 带结构计算的目录
-    fs::path scfDir;        // 自洽计算的目录
-    fs::path dielectricDir; // 介电常数计算的目录
-    fs::path thermalExpansionDir; // 热膨胀计算的目录
+    fs::path root_dir_;             // 整个计算的根目录
+    fs::path compute_dir_;          // 一次完整vasp计算的目录
+    fs::path opt_dir_;              // 结构优化计算的目录
+    fs::path static_dir_;           // 静态计算的目录
+    fs::path band_dir_;             // 带结构计算的目录
+    fs::path scf_dir_;              // 自洽计算的目录
+    fs::path dielectric_dir_;       // 介电常数计算的目录
+    fs::path thermal_expansion_dir_; // 热膨胀计算的目录
 
+    // key-value pairs for result, eg: bandgap=1.2
+    std::map<std::string, std::string> results_;
 };
