@@ -52,6 +52,12 @@ public:
         }
     }
 
+    void singleCommand(const std::string& command) {
+        startVaspkit();
+        sendInputToVaspkit(command);
+        stopVaspkit();
+    }
+
     const std::string& getOutputFilename() const {
         return output_filename;
     }

@@ -607,6 +607,36 @@ void Vasp::PerformThermalExpansionCalculation()
     std::cout << "Thermal expansion coefficient: " << line << std::endl;
 }
 
+void Vasp::PerformConductivityCalculation()
+{
+    fs::current_path(computeDir);
+    fs::path conductivity_dir_ = prepareDirectory(CONDUCTIVITY_DIR);
+
+    fs_copy_files({POTCAR, INCAR}, conductivity_dir_);
+
+    // Copy the CONTCAR file from the structure optimization directory
+    fs::copy_file(fs::path(optDir) / CONTCAR, conductivity_dir_ / POSCAR, fs::copy_option::overwrite_if_exists);
+
+    fs_copy_files({optDir / WAVECAR, optDir / CHGCAR, optDir / INCAR}, conductivity_dir_);
+
+    fs::current_path(conductivity_dir_);
+
+    modifyINCAR(INCAR, {{"NSW", "0"}, {"SIGMA", "0.05"}, {"LWAVE", ".TRUE."}, {"LCHARG", ".TRUE."}, {"NEDOS", "2001"}});
+
+    // Generate KPOINTS file
+    VaspkitManager &vaspkit = VaspkitManager::getInstance();
+    vaspkit.singleCommand("681\n");
+
+    runCommand("mpirun -np 4 vasp_std > vasp_conductivity.log");
+
+    //Perfrom BoltzTraP calculation
+    fs::copy_file( rootDir / CONFIG_DIR / "VPKIT.in", conductivity_dir_ / "VPKIT.in", fs::copy_option::overwrite_if_exists);
+
+    vaspkit.singleCommand("682\n");
+
+    // TODO: 处理电导率和载流子浓度的输出文件
+}
+
 void Vasp::UseHistoryOptDir()
 {
     std::cout << "Looking for previous structure optimization directory..." << std::endl;
