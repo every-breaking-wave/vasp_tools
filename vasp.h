@@ -42,16 +42,6 @@
 #define MOBILITY "MOBILITY"
 #define BANDGAP "BANDGAP"
 
-// 对应的单位
-std::map<std::string, std::string> units = {
-    {DENSITY, "g/cm^3"},
-    {DIELECTRIC, ""},
-    {THERMAL_EXPANSION, "1/K"},
-    {THERMAL_CONDUCTIVITY, "W/mK"},
-    {CONDUCTIVITY, "S/m"},
-    {MOBILITY, "cm^2/Vs"},
-    {BANDGAP, "eV"}};
-
 namespace fs = boost::filesystem;
 
 class Vasp

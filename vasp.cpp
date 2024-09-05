@@ -8,6 +8,16 @@
 #define DEBUG_PRINT(x)
 #endif
 
+std::map<std::string, std::string> units = {
+    {DENSITY, "g/cm^3"},
+    {DIELECTRIC, ""},
+    {THERMAL_EXPANSION, "1/K"},
+    {THERMAL_CONDUCTIVITY, "W/mK"},
+    {CONDUCTIVITY, "S/m"},
+    {MOBILITY, "cm^2/Vs"},
+    {BANDGAP, "eV"}};
+
+    
 ////////////////////////// Utility Functions //////////////////////////
 
 void CopyFiles(const std::vector<fs::path> &source_files, const fs::path &destination_dir)

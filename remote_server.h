@@ -13,13 +13,15 @@ public:
         : acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
     {
         StartAccept();
-        std::string vasp_dir = "~/vaspcompute";
+        fs::current_path("/home/user");
+        std::string vasp_dir = "vasp_calculations";
         if (!fs::exists(vasp_dir))
         {
             fs::create_directory(vasp_dir);
         }
-        root_dir_ = fs::canonical(vasp_dir);
-        fs::current_path(root_dir_);
+        fs::current_path(vasp_dir);
+        root_dir_ = fs::current_path();
+        std::cout << "Root directory: " << root_dir_ << std::endl;
     }
 
 private:
