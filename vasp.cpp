@@ -17,7 +17,6 @@ std::map<std::string, std::string> units = {
     {MOBILITY, "cm^2/Vs"},
     {BANDGAP, "eV"}};
 
-    
 ////////////////////////// Utility Functions //////////////////////////
 
 void CopyFiles(const std::vector<fs::path> &source_files, const fs::path &destination_dir)
@@ -76,7 +75,8 @@ void RunCommand(const std::string &command)
     if (result != 0)
     {
         std::cerr << "Error: Command failed -> " << command << std::endl;
-        exit(EXIT_FAILURE);
+        // 抛出异常
+        throw std::runtime_error("Command failed: " + command);
     }
 }
 
@@ -373,7 +373,7 @@ void Vasp::GenerateInputFiles(const std::string &poscarPath)
 {
     fs::current_path(compute_dir_);
     // Copy the provided POSCAR file
-    fs::copy_file(poscarPath, POSCAR, fs::copy_option::overwrite_if_exists);
+    fs::copy_file(root_dir_ / poscarPath, POSCAR, fs::copy_option::overwrite_if_exists);
     // Generate INCAR, POTCAR, and KPOINTS using VASPKIT
     RunCommand("vaspkit -task 103 2>&1");
     if (GenerateKPOINTS() != 0)
@@ -543,7 +543,15 @@ void Vasp::PerformBandStructureCalculation()
     fs::current_path(scf_dir_);
 
     // Run VASP for SCF calculation
-    RunCommand("mpirun -np 4 vasp_std > vasp_band_scf.log");
+    try
+    {
+        RunCommand("mpirun -np 4 vasp_std > vasp_band_scf.log");
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << '\n';
+        return;
+    }
 
     // 2：进行带结构计算
     //      重要参数： NSW = 0
@@ -567,21 +575,27 @@ void Vasp::PerformBandStructureCalculation()
 
     // 修改 INCAR 文件
     incarOptions = {{"NSW", "0"}, {"IBRION", "-1"}, {"LWAVE", ".F."}, {"LCHARG", ".F."}, {"LORBIT", "11"}, {"LSORBIT", ".T."}, {"GGA_COMPAT", ".FALSE."}, {"LMAXMIX", "4"}, {"SAXIS", "0 0 1"}};
-    ModifyINCAR(scf_dir_ / INCAR, incarOptions);
+    ModifyINCAR(band_dir_ / INCAR, incarOptions);
 
     // 修改K-PATH为KPOINTS
     fs::rename("KPATH.in", KPOINTS);
 
-    // Run VASP for band structure calculation
-    RunCommand("mpirun -np 4 vasp_std > vasp_band_nscf.log");
-
-    // Extract the band gap from the OUTCAR file
-    std::vector<std::vector<double>> energies;
-    ReadBandDat("BAND.dat", energies);
-    double bandgap, VBM, CBM;
-    CalculateBandgap(energies, bandgap, VBM, CBM);
-
-    results_[BANDGAP] = std::to_string(bandgap);
+    try
+    {
+        // Run VASP for band structure calculation
+        RunCommand("mpirun -np 4 vasp_std > vasp_band_nscf.log");
+        // Extract the band gap from the OUTCAR file
+        std::vector<std::vector<double>> energies;
+        ReadBandDat("BAND.dat", energies);
+        double bandgap, VBM, CBM;
+        CalculateBandgap(energies, bandgap, VBM, CBM);
+        results_[BANDGAP] = std::to_string(bandgap);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << '\n';
+        return;
+    }
 }
 
 void Vasp::PerformThermalExpansionCalculation()
@@ -605,9 +619,16 @@ void Vasp::PerformThermalExpansionCalculation()
 
     fs::current_path(thermal_expansion_dir_);
 
-    std::string command = "bash ./thermalExpansionAnalysis.sh";
-    
-    RunCommand(command);
+    try
+    {
+        std::string command = "bash ./thermalExpansionAnalysis.sh";
+        RunCommand(command);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << '\n';
+        return;
+    }
 
     // Extract the thermal expansion coefficient from the output file
     std::ifstream outfile("thermal_expansion_result.txt");
@@ -637,10 +658,21 @@ void Vasp::PerformConductivityCalculation()
     VaspkitManager &vaspkit = VaspkitManager::getInstance();
     vaspkit.singleCommand("681\n");
 
-    RunCommand("mpirun -np 4 vasp_std > vasp_conductivity.log");
+    try
+    {
+        RunCommand("mpirun -np 4 vasp_std > vasp_conductivity.log");
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+        return;
+    }
+    
 
-    //Perfrom BoltzTraP calculation
-    fs::copy_file( root_dir_ / CONFIG_DIR / "VPKIT.in", conductivity_dir_ / "VPKIT.in", fs::copy_option::overwrite_if_exists);
+
+
+    // Perfrom BoltzTraP calculation
+    fs::copy_file(root_dir_ / CONFIG_DIR / "VPKIT.in", conductivity_dir_ / "VPKIT.in", fs::copy_option::overwrite_if_exists);
 
     vaspkit.singleCommand("682\n");
 

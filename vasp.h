@@ -47,7 +47,7 @@ namespace fs = boost::filesystem;
 class Vasp
 {
 public:
-    Vasp(const std::string &rootDir) : root_dir_(rootDir)
+    Vasp(const std::string &rootDir, const std::string &dataDir) : root_dir_(rootDir), data_dir_(dataDir)
     {
         if (chdir(rootDir.c_str()) != 0)
         {
@@ -77,6 +77,7 @@ public:
     fs::path  StoreResults();
 
 private:
+    fs::path data_dir_;             // 数据目录
     fs::path root_dir_;             // 整个计算的根目录
     fs::path compute_dir_;          // 一次完整vasp计算的目录
     fs::path opt_dir_;              // 结构优化计算的目录

@@ -5,6 +5,29 @@
 
 using boost::asio::ip::tcp;
 
+void RemoteServer::HandleFileCompletion(const std::string &filename, std::shared_ptr<tcp::socket> socket)
+{
+    if (fs::is_regular_file(filename) && filename.substr(0, 6) == "POSCAR")
+    {
+        fs::path result_file = PerformVaspCompute(filename);
+
+        // 通知客户端计算完成，并将结果文件发送回客户端
+        boost::asio::async_write(*socket, boost::asio::buffer("COMPUTE finished \n"),
+                                 [socket, result_file](boost::system::error_code ec, std::size_t /*length*/)
+                                 {
+                                     if (!ec)
+                                     {
+                                         auto result_file_stream = std::make_shared<std::ifstream>(result_file.filename().string(), std::ios::binary);
+                                         send_file_content(result_file_stream, socket.get());
+                                     }
+                                     else
+                                     {
+                                         std::cerr << "Failed to send command output: " << ec.message() << std::endl;
+                                     }
+                                 });
+    }
+}
+
 void RemoteServer::StartAccept()
 {
     auto socket = std::make_shared<tcp::socket>(acceptor_.get_executor());
@@ -37,21 +60,10 @@ void RemoteServer::HandleConnection(std::shared_ptr<tcp::socket> socket)
                     file->write(data.data() + pos + 1, length - pos - 1);
 
                     // 继续接收并保存文件内容
-                    ReceiveFileContent(socket, file);
-                }
-                if(fs::is_regular_file(posfile) && posfile.substr(0, 6) == "POSCAR")
-                {
-                    fs::path result_file = PerformVaspCompute(posfile);
-                    // 通知客户端计算完成, 并将结果文件发送回客户端
-                    boost::asio::async_write(*socket, boost::asio::buffer("COMPUTE finished \n"),
-                        [this, socket, result_file](boost::system::error_code ec, std::size_t /*length*/) {
-                            if (!ec) {
-                                auto file = std::make_shared<std::ifstream>(result_file.filename().string(), std::ios::binary);
-                                send_file_content(file, socket.get());
-                            } else {
-                                std::cerr << "Failed to send command output: " << ec.message() << std::endl;
-                            }
-                        });
+                    ReceiveFileContent(socket, file, posfile, [this](const std::string &filename, std::shared_ptr<tcp::socket> socket)
+                                       {
+                        HandleFileCompletion(filename, socket);
+                    });
                 }
             } else if (data.substr(0, 4) == "COMPUTE ") {  // TODO: 目前这个功能不需要
                     std::string command = data.substr(4);
@@ -70,17 +82,18 @@ void RemoteServer::HandleConnection(std::shared_ptr<tcp::socket> socket)
             } });
 }
 
-void RemoteServer::ReceiveFileContent(std::shared_ptr<tcp::socket> socket, std::shared_ptr<std::ofstream> file)
+void RemoteServer::ReceiveFileContent(std::shared_ptr<tcp::socket> socket, std::shared_ptr<std::ofstream> file, const std::string &file_name, std::function<void(const std::string &, std::shared_ptr<tcp::socket>)> on_complete)
 {
     auto buffer = std::make_shared<std::array<char, 1024>>();
-    socket->async_read_some(boost::asio::buffer(*buffer), [this, socket, buffer, file](boost::system::error_code ec, std::size_t length)
+    socket->async_read_some(boost::asio::buffer(*buffer), [this, socket, buffer, file, on_complete, file_name](boost::system::error_code ec, std::size_t length)
                             {
         if (!ec) {
             file->write(buffer->data(), length);
-            ReceiveFileContent(socket, file); // 继续接收剩余内容
+            ReceiveFileContent(socket, file, file_name, on_complete); // 继续接收剩余内容
         } else if (ec == boost::asio::error::eof) {
             file->close(); // 完成传输
             std::cout << "File received and saved successfully." << std::endl;
+            on_complete(file_name, socket);
         } else {
             std::cerr << "Failed to receive file content: " << ec.message() << std::endl;
             if (file->is_open()) {
@@ -105,17 +118,17 @@ std::string RemoteServer::ExecuteCommand(const std::string &command)
     return result;
 }
 
-fs::path RemoteServer::PerformVaspCompute(const std::string &poscarPath)
+fs::path RemoteServer::PerformVaspCompute(const std::string &poscar_name)
 {
     std::string cwd = get_current_dir_name();
     // 为每次 VASP 计算准备一个新的目录、vasp对象
-    Vasp *vasp = new Vasp(cwd);
+    Vasp *vasp = new Vasp(root_dir_.string(), data_dir_.string());
 
     vasp->PrepareDirectory("");
 
     std::cout << "Generating input files..." << std::endl;
     // this will move the POSCAR file to the compute directory and generate the input files
-    vasp->GenerateInputFiles(poscarPath);
+    vasp->GenerateInputFiles(poscar_name);
 
     std::cout << "Performing structure optimization..." << std::endl;
     vasp->PerformStructureOptimization();
@@ -132,9 +145,9 @@ fs::path RemoteServer::PerformVaspCompute(const std::string &poscarPath)
     std::cout << "Performing conductivity calculation..." << std::endl;
     vasp->PerformConductivityCalculation();
 
-    std::cout << "Performing thermal expansion calculation..." << std::endl;
-    std::cout << "This could take a long time." << std::endl;
-    vasp->PerformThermalExpansionCalculation();
+    // std::cout << "Performing thermal expansion calculation..." << std::endl;
+    // std::cout << "This could take a long time." << std::endl;
+    // vasp->PerformThermalExpansionCalculation();
 
     std::cout << "VASP calculation complete." << std::endl;
     return vasp->StoreResults();
