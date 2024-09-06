@@ -31,7 +31,7 @@ private:
 
     std::string ExecuteCommand(const std::string &command);
 
-    void PerformVaspCompute(const std::string &poscarPath);
+    fs::path PerformVaspCompute(const std::string &poscarPath);
 
     tcp::acceptor acceptor_;
 

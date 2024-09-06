@@ -84,7 +84,7 @@ public:
     void PerformThermalExpansionCalculation();
     void PerformConductivityCalculation();
     void UseHistoryOptDir();
-    void StoreResults();
+    fs::path  StoreResults();
 
 private:
     fs::path root_dir_;             // 整个计算的根目录

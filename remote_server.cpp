@@ -1,6 +1,8 @@
 
 #include "remote_server.h"
 #include "time.h"
+#include "tool.h"
+
 using boost::asio::ip::tcp;
 
 void RemoteServer::StartAccept()
@@ -39,9 +41,19 @@ void RemoteServer::HandleConnection(std::shared_ptr<tcp::socket> socket)
                 }
                 if(fs::is_regular_file(posfile) && posfile.substr(0, 6) == "POSCAR")
                 {
-                    PerformVaspCompute(posfile);
+                    fs::path result_file = PerformVaspCompute(posfile);
+                    // 通知客户端计算完成, 并将结果文件发送回客户端
+                    boost::asio::async_write(*socket, boost::asio::buffer("COMPUTE finished \n"),
+                        [this, socket, result_file](boost::system::error_code ec, std::size_t /*length*/) {
+                            if (!ec) {
+                                auto file = std::make_shared<std::ifstream>(result_file.filename().string(), std::ios::binary);
+                                send_file_content(file, socket.get());
+                            } else {
+                                std::cerr << "Failed to send command output: " << ec.message() << std::endl;
+                            }
+                        });
                 }
-            } else if (data.substr(0, 4) == "COMPUTE ") {
+            } else if (data.substr(0, 4) == "COMPUTE ") {  // TODO: 目前这个功能不需要
                     std::string command = data.substr(4);
                     std::string output = ExecuteCommand(command);
                     boost::asio::async_write(*socket, boost::asio::buffer(output), 
@@ -93,7 +105,7 @@ std::string RemoteServer::ExecuteCommand(const std::string &command)
     return result;
 }
 
-void RemoteServer::PerformVaspCompute(const std::string &poscarPath)
+fs::path RemoteServer::PerformVaspCompute(const std::string &poscarPath)
 {
     std::string cwd = get_current_dir_name();
     // 为每次 VASP 计算准备一个新的目录、vasp对象
@@ -125,5 +137,5 @@ void RemoteServer::PerformVaspCompute(const std::string &poscarPath)
     vasp->PerformThermalExpansionCalculation();
 
     std::cout << "VASP calculation complete." << std::endl;
-    vasp->StoreResults();
+    return vasp->StoreResults();
 }
