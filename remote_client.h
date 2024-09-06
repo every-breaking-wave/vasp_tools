@@ -3,6 +3,7 @@
 #include <fstream>
 #include <array>
 #include <memory>
+#include "tool.h"
 
 using boost::asio::ip::tcp;
 
@@ -31,37 +32,13 @@ public:
                                  {
                                      if (!ec)
                                      {
-                                         send_file_content(file); // 继续发送文件内容
+                                         send_file_content(file, &socket_);
                                      }
                                      else
                                      {
                                          std::cerr << "Failed to send file header: " << ec.message() << std::endl;
                                      }
                                  });
-    }
-
-    void send_file_content(std::shared_ptr<std::ifstream> file)
-    {
-        auto buffer = std::make_shared<std::array<char, 1024>>();
-        if (file->read(buffer->data(), buffer->size()) || file->gcount() > 0)
-        {
-            boost::asio::async_write(socket_, boost::asio::buffer(*buffer, file->gcount()),
-                                     [this, file, buffer](boost::system::error_code ec, std::size_t /*length*/)
-                                     {
-                                         if (!ec)
-                                         {
-                                             send_file_content(file); // 继续发送剩余文件内容
-                                         }
-                                         else
-                                         {
-                                             std::cerr << "Failed to send file content: " << ec.message() << std::endl;
-                                         }
-                                     });
-        }
-        else
-        {
-            std::cout << "File sent successfully." << std::endl;
-        }
     }
 
     

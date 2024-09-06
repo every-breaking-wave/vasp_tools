@@ -691,13 +691,16 @@ void Vasp::UseHistoryOptDir()
     }
 }
 
-void Vasp::StoreResults()
+fs::path Vasp::StoreResults()
 {
     fs::current_path(compute_dir_);
-    std::ofstream resultsFile("results.txt");
+    std::string result_file_name = "results_" + std::to_string(std::time(nullptr)) + ".txt";
+    std::ofstream result_file(result_file_name);
     for (const auto &result : results_)
     {
-        resultsFile << result.first << " = " << result.second << " " << units[result.first] << std::endl;
+        result_file << result.first << " = " << result.second << " " << units[result.first] << std::endl;
     }
-    resultsFile.close();
+    result_file.close();
+    fs::path resultsPath = fs::current_path() / result_file_name;
+    return resultsPath;
 }
