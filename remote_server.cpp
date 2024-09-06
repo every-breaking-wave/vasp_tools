@@ -51,6 +51,8 @@ void RemoteServer::HandleConnection(std::shared_ptr<tcp::socket> socket)
                 std::string posfile;
                 if (pos != std::string::npos) {
                     posfile = data.substr(4, pos - 4) + "_" + std::to_string(time(nullptr));
+                    // 只保留文件名部分
+                    
                     auto file = std::make_shared<std::ofstream>(posfile, std::ios::binary);
                     if (!file->is_open()) {
                         std::cerr << "Failed to open file: " << posfile << std::endl;
@@ -65,9 +67,11 @@ void RemoteServer::HandleConnection(std::shared_ptr<tcp::socket> socket)
                         HandleFileCompletion(filename, socket);
                     });
                 }
-            } else if (data.substr(0, 4) == "COMPUTE ") {  // TODO: 目前这个功能不需要
+            } else if (data.substr(0, 4) == "CMD ") {  // TODO: 目前这个功能不需要
                     std::string command = data.substr(4);
                     std::string output = ExecuteCommand(command);
+                    std::cout << "Command executed: " << command << std::endl;
+		            std::cout << "Output: " << output << std::endl;
                     boost::asio::async_write(*socket, boost::asio::buffer(output), 
                         [this, socket](boost::system::error_code ec, std::size_t /*length*/) {
                             if (!ec) {
