@@ -32,6 +32,7 @@
 #define CONTCAR "CONTCAR"
 #define WAVECAR "WAVECAR"
 #define CHGCAR "CHGCAR"
+#define OUTCAR "OUTCAR"
 
 // output name
 #define DENSITY "DENSITY"

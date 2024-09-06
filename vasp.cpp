@@ -444,19 +444,27 @@ void Vasp::PerformDielectricCalculation()
 
     fs::current_path(dielectric_dir_);
 
-    // GenerateINCAR("EC");
+    GenerateINCAR("EC");
 
-    // ModifyINCAR(INCAR, {{"IBRION", "8"}});
-    // // Modify INCAR for dielectric calculation
-    // // std::ofstream incar(INCAR);
-    // // incar << "LEPSILON = .TRUE.\n";
-    // // incar.close();
+    ModifyINCAR(INCAR, {{"IBRION", "8"}});
+    // Modify INCAR for dielectric calculation
+    // std::ofstream incar(INCAR);
+    // incar << "LEPSILON = .TRUE.\n";
+    // incar.close();
 
-    // // Run VASP for dielectric calculation
-    // RunCommand("mpirun -np 4 vasp_std > vasp_dielectric.log");
+    // Run VASP for dielectric calculation
+    try
+    {
+        RunCommand("mpirun -np 4 vasp_std > vasp_dielectric.log");
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << '\n';
+        return;
+    }
 
     // Extract the dielectric constant from the OUTCAR file
-    std::ifstream outcar("OUTCAR");
+    std::ifstream outcar(OUTCAR);
     std::string line;
     double sum = 0.0;
     bool found = false;
@@ -662,14 +670,11 @@ void Vasp::PerformConductivityCalculation()
     {
         RunCommand("mpirun -np 4 vasp_std > vasp_conductivity.log");
     }
-    catch(const std::exception& e)
+    catch (const std::exception &e)
     {
         std::cerr << e.what() << '\n';
         return;
     }
-    
-
-
 
     // Perfrom BoltzTraP calculation
     fs::copy_file(root_dir_ / CONFIG_DIR / "VPKIT.in", conductivity_dir_ / "VPKIT.in", fs::copy_option::overwrite_if_exists);
