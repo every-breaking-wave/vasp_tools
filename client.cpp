@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
         msgBox.exec();
 
         if (msgBox.clickedButton() == (QAbstractButton *)fileButton) {
-            QString directory = QFileDialog::getExistingDirectory(nullptr, "choose folder", QString(),
+                        QString directory = QFileDialog::getExistingDirectory(nullptr, "choose folder", QString(),
                                                                   QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
             if (!directory.isEmpty()) {
                 client.send_file(directory.toStdString());
