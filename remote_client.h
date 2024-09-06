@@ -7,6 +7,19 @@
 
 using boost::asio::ip::tcp;
 
+std::string GetFileName(const std::string& filePath) {
+    std::string fileName;
+    size_t pos = filePath.find_last_of('/');
+    if (pos != std::string::npos) {
+        fileName = filePath.substr(pos + 1);
+    }
+    else {
+        fileName = filePath;
+    }
+    return fileName;
+}
+
+
 class RemoteClient
 {
 public:
@@ -17,16 +30,16 @@ public:
         auto endpoints = resolver.resolve(server, std::to_string(port));
         boost::asio::connect(socket_, endpoints);
     }
-    void send_file(const std::string &filename)
+    void send_file(const std::string &file_path)
     {
-        auto file = std::make_shared<std::ifstream>(filename, std::ios::binary);
+        auto file = std::make_shared<std::ifstream>(file_path, std::ios::binary);
+        std::string file_name = GetFileName(file_path);
+        std::string file_header = "FILE" + file_name + "\n";
         if (!file->is_open())
         {
-            std::cerr << "Failed to open file: " << filename << std::endl;
+            std::cerr << "Failed to open file: " << file_path << std::endl;
             return;
         }
-
-        std::string file_header = "FILE" + filename + "\n";
         boost::asio::async_write(socket_, boost::asio::buffer(file_header),
                                  [this, file](boost::system::error_code ec, std::size_t /*length*/)
                                  {
