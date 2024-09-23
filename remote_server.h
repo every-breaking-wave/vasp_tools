@@ -25,6 +25,9 @@ public:
         std::cout << "Data directory: " << data_dir_ << std::endl;
     }
 
+    // 一个测试函数，主动向server自身发送一个文件
+    void SendFileToServer(const std::string &filename);
+
 private:
     void StartAccept();
 
@@ -37,6 +40,8 @@ private:
     fs::path PerformVaspCompute(const std::string &poscarPath);
 
     void HandleFileCompletion(const std::string &filename, std::shared_ptr<tcp::socket> socket);
+
+
 
     tcp::acceptor acceptor_;
 

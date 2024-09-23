@@ -28,6 +28,37 @@ void RemoteServer::HandleFileCompletion(const std::string &filename, std::shared
     }
 }
 
+void RemoteServer::SendFileToServer(const std::string &filename)
+{
+    try
+    {
+        boost::asio::io_context io_context;
+        tcp::socket socket(io_context);
+        tcp::resolver resolver(io_context);
+        boost::asio::connect(socket, resolver.resolve("localhost", "12345"));
+
+        std::cout << "Sending file: " << filename << std::endl;
+        std::shared_ptr<std::ifstream> file = std::make_shared<std::ifstream>(filename, std::ios::binary);
+        if (!file->is_open())
+        {
+            std::cerr << "Failed to open file: " << filename << std::endl;
+            return;
+        }
+
+        // 发送文件名
+        std::string file_name = "FILE " + filename + "\n";
+        boost::asio::write(socket, boost::asio::buffer(file_name));
+
+        // 发送文件内容
+        send_file_content(file, &socket);
+        io_context.run();
+    }
+    catch (std::exception &e)
+    {
+        std::cerr << "Exception: " << e.what() << std::endl;
+    }
+}
+
 void RemoteServer::StartAccept()
 {
     auto socket = std::make_shared<tcp::socket>(acceptor_.get_executor());
@@ -143,11 +174,11 @@ fs::path RemoteServer::PerformVaspCompute(const std::string &poscar_name)
     std::cout << "Performing dielectric calculation..." << std::endl;
     vasp->PerformDielectricCalculation();
 
-    std::cout << "Performing band structure calculation..." << std::endl;
-    vasp->PerformBandStructureCalculation();
+    // std::cout << "Performing band structure calculation..." << std::endl;
+    // vasp->PerformBandStructureCalculation();
 
-    std::cout << "Performing conductivity calculation..." << std::endl;
-    vasp->PerformConductivityCalculation();
+    // std::cout << "Performing conductivity calculation..." << std::endl;
+    // vasp->PerformConductivityCalculation();
 
     // std::cout << "Performing thermal expansion calculation..." << std::endl;
     // std::cout << "This could take a long time." << std::endl;
