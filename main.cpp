@@ -13,7 +13,9 @@ int main()
 
         std::thread server_thread([&io_context]()
                                   { io_context.run(); });
-        server.SendFileToServer("/home/fyf/Materials/GaAs-0729/origin/POSCAR");
+        // server.SendFileToServer("/home/fyf/Materials/GaAs-0729/origin/POSCAR");
+        // server.SendFileToServer("/home/fyf/Materials/SiO2/POSCAR");
+        
         server_thread.join();
 
     }

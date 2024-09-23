@@ -73,6 +73,7 @@ void RemoteServer::StartAccept()
 void RemoteServer::HandleConnection(std::shared_ptr<tcp::socket> socket)
 {
     auto buffer = std::make_shared<std::array<char, 1024>>();
+    fs::current_path(data_dir_);
     socket->async_read_some(boost::asio::buffer(*buffer), [this, socket, buffer](boost::system::error_code ec, std::size_t length)
                             {
         if (!ec) {
@@ -82,8 +83,7 @@ void RemoteServer::HandleConnection(std::shared_ptr<tcp::socket> socket)
                 std::string posfile;
                 if (pos != std::string::npos) {
                     posfile = data.substr(4, pos - 4) + "_" + std::to_string(time(nullptr));
-                    // 只保留文件名部分
-                    
+                    posfile = posfile.substr(posfile.find_last_of("/") + 1);
                     auto file = std::make_shared<std::ofstream>(posfile, std::ios::binary);
                     if (!file->is_open()) {
                         std::cerr << "Failed to open file: " << posfile << std::endl;
@@ -122,16 +122,32 @@ void RemoteServer::ReceiveFileContent(std::shared_ptr<tcp::socket> socket, std::
     auto buffer = std::make_shared<std::array<char, 1024>>();
     socket->async_read_some(boost::asio::buffer(*buffer), [this, socket, buffer, file, on_complete, file_name](boost::system::error_code ec, std::size_t length)
                             {
-        if (!ec) {
-            file->write(buffer->data(), length);
+        if (!ec)
+        {
+            std::string received_data(buffer->data(), length);
+            // 检查是否接收到结束信号
+            if (received_data.find("END_OF_FILE\n") != std::string::npos)
+            {
+                file->write(buffer->data(), length - 12);
+                file->close(); // 完成传输
+                on_complete(file_name, socket);
+            } else {
+                file->write(buffer->data(), length);
+            }
             ReceiveFileContent(socket, file, file_name, on_complete); // 继续接收剩余内容
-        } else if (ec == boost::asio::error::eof) {
+        
+        }
+        else if (ec == boost::asio::error::eof)
+        {
             file->close(); // 完成传输
             std::cout << "File received and saved successfully." << std::endl;
             on_complete(file_name, socket);
-        } else {
+        }
+        else
+        {
             std::cerr << "Failed to receive file content: " << ec.message() << std::endl;
-            if (file->is_open()) {
+            if (file->is_open())
+            {
                 file->close(); // 确保文件被正确关闭
             }
         } });

@@ -18,7 +18,7 @@ done
 for i in "${nums[@]}"  
 do
     cd "./${i}"
-    mpirun -np 4 vasp_std
+    mpirun -np 12 vasp_std
     cd ..
 done
 

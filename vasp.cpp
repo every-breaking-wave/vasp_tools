@@ -254,7 +254,7 @@ std::string Vasp::PrepareDirectory(const std::string &computeTask = "")
 {
     try
     {
-        fs::current_path(root_dir_);
+        fs::current_path(data_dir_);
         std::string retDir;
         std::string timestamp = std::to_string(std::time(nullptr));
         if (computeTask.empty())
@@ -264,7 +264,7 @@ std::string Vasp::PrepareDirectory(const std::string &computeTask = "")
                 compute_dir_ = "vasp_" + timestamp;
                 DEBUG_PRINT("computeDir: " << compute_dir_);
                 fs::create_directory(compute_dir_);
-                compute_dir_ = root_dir_ / compute_dir_;
+                compute_dir_ = data_dir_ / compute_dir_;
                 retDir = compute_dir_.string();
             }
             else
@@ -373,7 +373,7 @@ void Vasp::GenerateInputFiles(const std::string &poscarPath)
 {
     fs::current_path(compute_dir_);
     // Copy the provided POSCAR file
-    fs::copy_file(root_dir_ / poscarPath, POSCAR, fs::copy_option::overwrite_if_exists);
+    fs::copy_file(data_dir_ / poscarPath, POSCAR, fs::copy_option::overwrite_if_exists);
     // Generate INCAR, POTCAR, and KPOINTS using VASPKIT
     RunCommand("vaspkit -task 103 2>&1");
     if (GenerateKPOINTS() != 0)
@@ -397,7 +397,7 @@ void Vasp::PerformStructureOptimization()
     fs::current_path(opt_dir_);
 
     // Run VASP for structure optimization
-    RunCommand("mpirun -np 4 vasp_std > vasp_opt.log"); // Assuming MPI version of VASP
+    RunCommand("mpirun -np 12 vasp_std > vasp_opt.log"); // Assuming MPI version of VASP
 }
 
 void Vasp::PerformStaticCalculation()
@@ -424,7 +424,7 @@ void Vasp::PerformStaticCalculation()
     // incar.close();
 
     // Run VASP for static calculation
-    RunCommand("mpirun -np 4 vasp_std > vasp_static.log"); // Assuming MPI version of VASP
+    RunCommand("mpirun -np 12 vasp_std > vasp_static.log"); // Assuming MPI version of VASP
 }
 
 void Vasp::PerformDielectricCalculation()
@@ -455,7 +455,7 @@ void Vasp::PerformDielectricCalculation()
     // Run VASP for dielectric calculation
     try
     {
-        RunCommand("mpirun -np 4 vasp_std > vasp_dielectric.log");
+        RunCommand("mpirun -np 12 vasp_std > vasp_dielectric.log");
     }
     catch (const std::exception &e)
     {
@@ -553,7 +553,7 @@ void Vasp::PerformBandStructureCalculation()
     // Run VASP for SCF calculation
     try
     {
-        RunCommand("mpirun -np 4 vasp_std > vasp_band_scf.log");
+        RunCommand("mpirun -np 12 vasp_std > vasp_band_scf.log");
     }
     catch (const std::exception &e)
     {
@@ -591,7 +591,7 @@ void Vasp::PerformBandStructureCalculation()
     try
     {
         // Run VASP for band structure calculation
-        RunCommand("mpirun -np 4 vasp_std > vasp_band_nscf.log");
+        RunCommand("mpirun -np 12 vasp_std > vasp_band_nscf.log");
         // Extract the band gap from the OUTCAR file
         std::vector<std::vector<double>> energies;
         ReadBandDat("BAND.dat", energies);
@@ -668,7 +668,7 @@ void Vasp::PerformConductivityCalculation()
 
     try
     {
-        RunCommand("mpirun -np 4 vasp_std > vasp_conductivity.log");
+        RunCommand("mpirun -np 12 vasp_std > vasp_conductivity.log");
     }
     catch (const std::exception &e)
     {
@@ -736,6 +736,7 @@ fs::path Vasp::StoreResults()
     for (const auto &result : results_)
     {
         result_file << result.first << " = " << result.second << " " << units[result.first] << std::endl;
+        std::cout << result.first << " = " << result.second << " " << units[result.first] << std::endl;
     }
     result_file.close();
     fs::path resultsPath = fs::current_path() / result_file_name;

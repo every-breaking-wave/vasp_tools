@@ -17,7 +17,12 @@ import asyncio
 import os
 import time
 
+
+vasp_host_ip = '10.0.16.21'
+vasp_host_port = 12345
+
 class RemoteClient:
+
     def __init__(self, server, port):
         self.server = server
         self.port = port
@@ -43,6 +48,23 @@ class RemoteClient:
                     chunk = file.read(1024)
 
             print(f'File {file_name} sent successfully')
+
+            # 发送文件结束标志
+            end_signal = "END_OF_FILE\n"
+            self.writer.write(end_signal.encode())
+            await self.writer.drain()
+            print('End of file signal sent')
+
+            # Wait for the response
+            print('Waiting for server response...')
+            while True:
+                # 持续接收服务器的消息，直到不再有消息
+                response = await self.reader.read(1024)
+                if not response:
+                    break
+                print(f'Server response: {response.decode()}')
+
+
         except Exception as e:
             print(f'Error sending file: {e}')
         finally:
@@ -66,33 +88,38 @@ class RemoteClient:
         self.writer.close()
         await self.writer.wait_closed()
 
-# async def main():
-#     client = RemoteClient('10.0.16.21', 12345)  # Replace with your server and port
-#     await client.connect()
 
-#     # Send a file to the server
-#     await client.send_file('./fdtd.py')
-
-#     # # Send a command to the server
-#     # await client.connect()
-#     # await client.send_command('ls -l')
-
-# # Run the main function
-# asyncio.run(main())
 
 
 
 
 # 定义一个VASP类
 class VASP:
-    def __init__(self):
-        pass
 
-    def load(self, filePath):
-        pass
+    def __init__(self, vasp_host_ip, vasp_host_port):
+        # 初始化 RemoteClient 实例作为 VASP 类的成员变量
+        self.client = RemoteClient(vasp_host_ip, vasp_host_port)
+        self.filepath = None  # 初始化 filepath 为 None
+        # 确认client的writer和reader已经初始化
+        # assert self.client.writer is not None
+        # assert self.client.reader is not None
+        print('Client initialized')
+    
+    async def connect_client(self):
+        # 异步连接到远程服务器
+        await self.client.connect()
 
-    def run(self):
-        pass
+    async def send_file(self, file_path):
+        await self.client.send_file(file_path)
+
+    async def send_command(self, command):
+        await self.client.send_command(command)
+
+    def load(self, file_path):
+        self.filepath = file_path
+
+    async def run(self):
+        await self.send_file(self.filepath)
 
     def startSimulation():
         pass
@@ -136,3 +163,18 @@ class VASP:
 
     def requireMessage(messageType):
         pass
+
+
+
+
+async def main():
+    vasp = VASP(vasp_host_ip, vasp_host_port)
+    await vasp.connect_client()
+    vasp.load('D:/Materials/SiO2/POSCAR')
+    await vasp.run()
+    # # Send a command to the server
+    # await client.connect()
+    # await client.send_command('ls -l')
+
+# Run the main function
+asyncio.run(main())
