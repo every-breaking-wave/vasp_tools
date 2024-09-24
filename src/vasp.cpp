@@ -1,4 +1,6 @@
 #include "vasp.h"
+#include "tool.h"
+
 
 #define DEBUG 1
 
@@ -8,246 +10,8 @@
 #define DEBUG_PRINT(x)
 #endif
 
-std::map<std::string, std::string> units = {
-    {DENSITY, "g/cm^3"},
-    {DIELECTRIC, ""},
-    {THERMAL_EXPANSION, "1/K"},
-    {THERMAL_CONDUCTIVITY, "W/mK"},
-    {CONDUCTIVITY, "S/m"},
-    {MOBILITY, "cm^2/Vs"},
-    {BANDGAP, "eV"}};
 
-////////////////////////// Utility Functions //////////////////////////
 
-void CopyFiles(const std::vector<fs::path> &source_files, const fs::path &destination_dir)
-{
-    try
-    {
-        if (!fs::exists(destination_dir))
-        {
-            fs::create_directory(destination_dir);
-        }
-        for (const auto &source_file : source_files)
-        {
-            if (fs::exists(source_file) && fs::is_regular_file(source_file))
-            {
-                fs::path dest_path = destination_dir / source_file.filename();
-                fs::copy_file(source_file, dest_path, fs::copy_option::overwrite_if_exists);
-            }
-            else
-            {
-                std::cerr << "File " << source_file << " does not exist or is not a regular file." << std::endl;
-            }
-        }
-    }
-    catch (fs::filesystem_error &e)
-    {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
-}
-
-void CopyAllFiles(const fs::path &source_dir, const fs::path &destination_dir)
-{
-    try
-    {
-        if (!fs::exists(destination_dir))
-        {
-            fs::create_directory(destination_dir);
-        }
-        for (fs::directory_iterator it(source_dir); it != fs::directory_iterator(); ++it)
-        {
-            if (fs::is_regular_file(it->path()))
-            {
-                fs::path dest_path = destination_dir / it->path().filename();
-                fs::copy_file(it->path(), dest_path, fs::copy_option::overwrite_if_exists);
-            }
-        }
-    }
-    catch (fs::filesystem_error &e)
-    {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
-}
-
-void RunCommand(const std::string &command)
-{
-    int result = system(command.c_str());
-    if (result != 0)
-    {
-        std::cerr << "Error: Command failed -> " << command << std::endl;
-        // 抛出异常
-        throw std::runtime_error("Command failed: " + command);
-    }
-}
-
-std::string ExtractKmeshValue(const std::string &filename)
-{
-    std::ifstream infile(filename);
-    std::string line;
-    std::string kmeshValue;
-
-    while (std::getline(infile, line))
-    {
-        if (line.find("is Generally Precise Enough!") != std::string::npos)
-        {
-            std::istringstream iss(line);
-            // 忽略前面的部分，提取 Kmesh-Resolved Value
-            std::string token;
-            while (iss >> token)
-            {
-                if (token.find('-') != std::string::npos)
-                {
-                    // 取 - 号前面的部分作为 Kmesh 值
-                    kmeshValue = token.substr(0, token.find('-'));
-                    break;
-                }
-            }
-            break;
-        }
-    }
-
-    return kmeshValue;
-}
-
-void ModifyINCAR(fs::path filepath, const std::map<std::string, std::string> &options)
-{
-    std::ifstream infile(filepath.string());
-    std::stringstream buffer;
-    std::string line;
-
-    // Flag to track if a key has been modified
-    std::map<std::string, bool> modifiedKeys;
-    for (const auto &option : options)
-    {
-        modifiedKeys[option.first] = false;
-    }
-
-    // Read the file line by line
-    while (std::getline(infile, line))
-    {
-        std::string key, value;
-        std::size_t pos = line.find('=');
-
-        if (pos != std::string::npos)
-        {
-            key = line.substr(0, pos);
-            value = line.substr(pos + 1);
-
-            // Trim whitespace around key and value
-            key.erase(0, key.find_first_not_of(" \t"));
-            key.erase(key.find_last_not_of(" \t") + 1);
-            value.erase(0, value.find_first_not_of(" \t"));
-            value.erase(value.find_last_not_of(" \t") + 1);
-
-            // If the key exists in options, modify it
-            if (options.find(key) != options.end())
-            {
-                value = options.at(key);
-                modifiedKeys[key] = true; // Mark as modified
-            }
-
-            buffer << key << " = " << value << std::endl;
-        }
-        else
-        {
-            buffer << line << std::endl; // Keep the line unchanged if it does not contain '='
-        }
-    }
-
-    infile.close();
-
-    // Append new key-value pairs that were not found in the file
-    for (const auto &option : options)
-    {
-        if (!modifiedKeys[option.first])
-        {
-            buffer << option.first << " = " << option.second << std::endl;
-        }
-    }
-
-    // Write the modified content back to the file
-    std::ofstream outfile(filepath.string());
-    outfile << buffer.str();
-    outfile.close();
-}
-
-// Function to read band.dat file and extract k-points and energies
-void ReadBandDat(const std::string &file_path, std::vector<std::vector<double>> &energies)
-{
-    std::ifstream file(file_path);
-    if (!file.is_open())
-    {
-        throw std::runtime_error("Cannot open file: " + file_path);
-    }
-
-    std::string line;
-    while (std::getline(file, line))
-    {
-        if (!line.empty() && line[0] != '#')
-        { // Skip empty lines and comments
-            std::istringstream iss(line);
-            double k_point;
-            iss >> k_point;
-
-            std::vector<double> energy_levels;
-            double energy;
-            while (iss >> energy)
-            {
-                energy_levels.push_back(energy);
-            }
-            energies.push_back(energy_levels);
-        }
-    }
-    file.close();
-}
-
-// Function to calculate the band gap, VBM, and CBM
-void CalculateBandgap(const std::vector<std::vector<double>> &energies, double &bandgap, double &VBM, double &CBM)
-{
-    std::vector<double> VBM_list;
-    std::vector<double> CBM_list;
-
-    for (const auto &energy : energies)
-    {
-        std::vector<double> VBM_candidates;
-        std::vector<double> CBM_candidates;
-
-        for (double band : energy)
-        {
-            if (band < 0)
-            {
-                VBM_candidates.push_back(band);
-            }
-            else if (band > 0)
-            {
-                CBM_candidates.push_back(band);
-            }
-        }
-
-        if (!VBM_candidates.empty())
-        {
-            VBM_list.push_back(*std::max_element(VBM_candidates.begin(), VBM_candidates.end()));
-        }
-        if (!CBM_candidates.empty())
-        {
-            CBM_list.push_back(*std::min_element(CBM_candidates.begin(), CBM_candidates.end()));
-        }
-    }
-
-    if (VBM_list.empty())
-    {
-        throw std::runtime_error("VBM not found: no energy values below 0 eV.");
-    }
-    if (CBM_list.empty())
-    {
-        throw std::runtime_error("CBM not found: no energy values above 0 eV.");
-    }
-
-    VBM = *std::max_element(VBM_list.begin(), VBM_list.end());
-    CBM = *std::min_element(CBM_list.begin(), CBM_list.end());
-
-    bandgap = CBM - VBM;
-}
 
 ////////////////////////// Vasp Class//////////////////////////
 std::string Vasp::PrepareDirectory(const std::string &computeTask = "")
@@ -601,7 +365,26 @@ void Vasp::PerformBandStructureCalculation()
     }
     catch (const std::exception &e)
     {
-        std::cerr << e.what() << '\n';
+        // std::cerr << e.what() << '\n';
+        // 直接对STATIC目录进行带结构计算
+        fs::current_path(static_dir_);
+        // 执行~/bin/read_band.sh并获取结果
+        try
+        {
+            fs::path read_band_script = root_dir_ / SCRIPT_DIR / "readbandgap.sh";
+            RunCommand("bash " + read_band_script.string() + " ./OUTCAR > band_gap_result.txt");
+            std::ifstream bandgap_file("band_gap_result.txt");
+            std::string line;
+            while (std::getline(bandgap_file, line))
+            {
+                results_[BANDGAP] = line;
+            }
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << e.what() << '\n';
+            return;
+        }
         return;
     }
 }
@@ -664,8 +447,24 @@ void Vasp::PerformConductivityCalculation()
 
     // Generate KPOINTS file
     VaspkitManager &vaspkit = VaspkitManager::getInstance();
-    vaspkit.singleCommand("681\n");
+    vaspkit.startVaspkit((*compute_dir_.end()).string());
 
+    vaspkit.sendInputToVaspkit("681\n");
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    std::string kspacingValue = ExtractKSpacingValue(vaspkit.getOutputFilename());
+    if (!kspacingValue.empty())
+    {
+        vaspkit.sendInputToVaspkit(kspacingValue + "\n");
+        vaspkit.stopVaspkit();
+    }
+    else
+    {
+        std::cerr << "Error: Could not Extract K Spacing value from VASPKIT output." << std::endl;
+        vaspkit.stopVaspkit();
+        return;
+    }
     try
     {
         RunCommand("mpirun -np 12 vasp_std > vasp_conductivity.log");
@@ -679,9 +478,32 @@ void Vasp::PerformConductivityCalculation()
     // Perfrom BoltzTraP calculation
     fs::copy_file(root_dir_ / CONFIG_DIR / "VPKIT.in", conductivity_dir_ / "VPKIT.in", fs::copy_option::overwrite_if_exists);
 
+    std::cout << "Running BoltzTraP calculation..." << std::endl;
     vaspkit.singleCommand("682\n");
-
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     // TODO: 处理电导率和载流子浓度的输出文件
+
+    std::string conductivity_file = "ELECTRONIC_CONDUCTIVITY.dat";
+    std::string carrier_concentration_file = "CARRIER_CONCENTRATION.dat";
+
+    std::vector<ConductivityData> conductivities = readElectronicConductivity(conductivity_file);
+    std::vector<CarrierConcentrationData> concentrations = readCarrierConcentration(carrier_concentration_file);
+    
+    if (!conductivities.empty())
+    {
+        auto &last_conductivity = conductivities.back();
+        std::cout << "Final Average Conductivity: " << std::scientific
+                  << last_conductivity.average_conductivity << " 1/(Omega*m/s) at Energy: "
+                  << last_conductivity.energy << " eV" << std::endl;
+    }
+
+    if (!concentrations.empty())
+    {
+        auto &last_concentration = concentrations.back();
+        std::cout << "Final Carrier Concentration: " << last_concentration.concentration
+                  << " 1/cm^3 at Energy: " << last_concentration.energy << " eV" << std::endl;
+    }
+    vaspkit.stopVaspkit();
 }
 
 void Vasp::UseHistoryOptDir()
@@ -698,7 +520,7 @@ void Vasp::UseHistoryOptDir()
         fs::directory_iterator end;
         fs::path latestDir;
         std::time_t latestTime = 0;
-        for (fs::directory_iterator it(root_dir_); it != end; ++it)
+        for (fs::directory_iterator it(data_dir_); it != end; ++it)
         {
             if (fs::is_directory(it->path()) && it->path().filename().string().find("vasp_") == 0)
             {

@@ -5,6 +5,8 @@
 
 using boost::asio::ip::tcp;
 
+#define HISTORY 0
+
 void RemoteServer::HandleFileCompletion(const std::string &filename, std::shared_ptr<tcp::socket> socket)
 {
     if (fs::is_regular_file(filename) && filename.substr(0, 6) == "POSCAR")
@@ -175,26 +177,35 @@ fs::path RemoteServer::PerformVaspCompute(const std::string &poscar_name)
     // 为每次 VASP 计算准备一个新的目录、vasp对象
     Vasp *vasp = new Vasp(root_dir_.string(), data_dir_.string());
 
-    vasp->PrepareDirectory("");
+    if (HISTORY)
+    {
+        vasp->UseHistoryOptDir();
+    }
+    else
+    {
+        {
+            vasp->PrepareDirectory("");
 
-    std::cout << "Generating input files..." << std::endl;
-    // this will move the POSCAR file to the compute directory and generate the input files
-    vasp->GenerateInputFiles(poscar_name);
+            std::cout << "Generating input files..." << std::endl;
+            // this will move the POSCAR file to the compute directory and generate the input files
+            vasp->GenerateInputFiles(poscar_name);
 
-    std::cout << "Performing structure optimization..." << std::endl;
-    vasp->PerformStructureOptimization();
+            std::cout << "Performing structure optimization..." << std::endl;
+            vasp->PerformStructureOptimization();
 
-    std::cout << "Performing static calculation..." << std::endl;
-    vasp->PerformStaticCalculation();
+            std::cout << "Performing static calculation..." << std::endl;
+            vasp->PerformStaticCalculation();
+        }
+    }
 
-    std::cout << "Performing dielectric calculation..." << std::endl;
-    vasp->PerformDielectricCalculation();
+    // std::cout << "Performing dielectric calculation..." << std::endl;
+    // vasp->PerformDielectricCalculation();
 
     // std::cout << "Performing band structure calculation..." << std::endl;
     // vasp->PerformBandStructureCalculation();
 
-    // std::cout << "Performing conductivity calculation..." << std::endl;
-    // vasp->PerformConductivityCalculation();
+    std::cout << "Performing conductivity calculation..." << std::endl;
+    vasp->PerformConductivityCalculation();
 
     // std::cout << "Performing thermal expansion calculation..." << std::endl;
     // std::cout << "This could take a long time." << std::endl;

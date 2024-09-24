@@ -7,41 +7,11 @@
 #include <chrono>
 #include <cstdio>
 #include <sstream>
-#include "vaspkit.h"
 #include <string>
 #include <iostream>
 #include <boost/filesystem.hpp>
+#include "vasptool.h"
 
-#define STATIC_DIR "static_calc"
-#define OPT_DIR "opt_calc"
-#define SCF_DIR "scf_calc"
-#define BAND_DIR "band_calc"
-#define DIELECTRIC_DIR "dielectric_calc"
-#define THERMAL_EXPANSION_DIR "thermal_expansion_calc"
-#define CONDUCTIVITY_DIR "conductivity_calc"
-
-
-#define CONFIG_DIR "config"
-#define SCRIPT_DIR "scripts"
-
-// File names
-#define POSCAR "POSCAR"
-#define INCAR "INCAR"
-#define POTCAR "POTCAR"
-#define KPOINTS "KPOINTS"
-#define CONTCAR "CONTCAR"
-#define WAVECAR "WAVECAR"
-#define CHGCAR "CHGCAR"
-#define OUTCAR "OUTCAR"
-
-// output name
-#define DENSITY "DENSITY"
-#define DIELECTRIC "DIELECTRIC"
-#define THERMAL_EXPANSION "THERMAL_EXPANSION"
-#define THERMAL_CONDUCTIVITY "THERMAL_CONDUCTIVITY"
-#define CONDUCTIVITY "CONDUCTIVITY"
-#define MOBILITY "MOBILITY"
-#define BANDGAP "BANDGAP"
 
 namespace fs = boost::filesystem;
 
