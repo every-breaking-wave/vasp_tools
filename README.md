@@ -1,6 +1,6 @@
-# VASP Auxiliary Tool
+# VASP Tool
 
-This project is a VASP auxiliary tool that can calculate conductivity, dielectric constant, thermal expansion coefficient, and more.
+This project is a VASP tool that can calculate conductivity, dielectric constant, thermal expansion coefficient, and more.
 
 
 ## Usage
@@ -14,18 +14,24 @@ This project is a VASP auxiliary tool that can calculate conductivity, dielectri
 2. Install the dependencies:
 
     - Boost: Follow the installation instructions provided by the Boost documentation.
-    - Python: Install Python from the official Python website.
+    - Python: Install Python from the official Python website or package management tool.
     - C++11: Ensure that your compiler supports C++11 features.
 
 3. Build the project:
 
     ```
     cd vasp_tools
-    g++ main.cpp -o main -lboost_system -lboost_filesystem -lpthread
+    mkdir build 
+    cmake -S . -B build
+    cd build
+    make 
     ```
 
-4. Run the tool:
+4. Run the server:
 
     ```
-    ./main <POSCAR_PATH>
+    ./main
     ```
+
+5. Use client to send message
+   We also provide a simple client for user to try in **client** folder. You can build and run it.
