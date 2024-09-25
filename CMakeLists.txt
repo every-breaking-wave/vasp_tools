@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 include_directories(include)  
   
 # 添加可执行文件  
-add_executable(main src/main.cpp src/remote_server.cpp src/vasp.cpp src/vasptool.cpp src/tool.cpp)  
+add_executable(main src/main.cpp src/remote_server.cpp src/vasp.cpp src/vasp_tool.cpp src/tool.cpp)  
   
 # 链接库  
 find_package(Boost REQUIRED COMPONENTS system filesystem)  
@@ -20,6 +20,4 @@ if(Boost_FOUND)
     target_link_libraries(main ${Boost_LIBRARIES} pthread)  
 else()  
     message(FATAL_ERROR "Could not find Boost libraries.")  
-endif()  
-  
-# 如果你的项目需要其他CMake配置（如定义宏、添加测试等），请在此处添加
+endif()

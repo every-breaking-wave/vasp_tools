@@ -1,4 +1,4 @@
-#include "vasptool.h"
+#include "vasp_tool.h"
 
 
 ////////////////////////// Utility Functions //////////////////////////
@@ -20,7 +20,6 @@ std::string ExtractKmeshValue(const std::string &filename)
             {
                 if (token.find('-') != std::string::npos)
                 {
-                    // 取 - 号前面的部分作为 Kmesh 值
                     kmeshValue = token.substr(0, token.find('-'));
                     break;
                 }
@@ -43,7 +42,6 @@ std::string ExtractKSpacingValue(const std::string &filename)
         if (line.find("is Generally Precise Enough!") != std::string::npos)
         {
             std::istringstream iss(line);
-            // 忽略前面的部分，提取 Kmesh-Resolved Value
             std::string token;
             while (iss >> token)
             {
@@ -216,10 +214,10 @@ std::vector<ConductivityData> readElectronicConductivity(const std::string &file
         if (iss >> data.energy >> std::skipws >> data.average_conductivity)
         {
             conductivities.push_back(data);
-            std::cout << "Energy: " << std::fixed << std::setprecision(4)
-                      << data.energy << " eV, Average Conductivity: "
-                      << std::scientific << std::setprecision(4)
-                      << data.average_conductivity << " 1/(Omega*m/s)" << std::endl;
+            // std::cout << "Energy: " << std::fixed << std::setprecision(4)
+            //           << data.energy << " eV, Average Conductivity: "
+            //           << std::scientific << std::setprecision(4)
+            //           << data.average_conductivity << " 1/(Omega*m/s)" << std::endl;
         }
     }
     return conductivities;
@@ -241,10 +239,10 @@ std::vector<CarrierConcentrationData> readCarrierConcentration(const std::string
         {
             data.concentration *= 1e20; // Convert to 1/cm^3
             concentrations.push_back(data);
-            std::cout << "Energy: " << std::fixed << std::setprecision(5)
-                      << data.energy << " eV, Carrier Concentration: "
-                      << std::fixed << std::setprecision(4)
-                      << data.concentration << " 1/cm^3" << std::endl;
+            // std::cout << "Energy: " << std::fixed << std::setprecision(5)
+            //           << data.energy << " eV, Carrier Concentration: "
+            //           << std::fixed << std::setprecision(4)
+            //           << data.concentration << " 1/cm^3" << std::endl;
         }
     }
     return concentrations;

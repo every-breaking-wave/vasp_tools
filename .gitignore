@@ -3,3 +3,5 @@ POSCAR
 POTCAR
 main
 a.out
+build/
+CMakeFiles/

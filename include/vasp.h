@@ -10,7 +10,7 @@
 #include <string>
 #include <iostream>
 #include <boost/filesystem.hpp>
-#include "vasptool.h"
+#include "vasp_tool.h"
 
 
 namespace fs = boost::filesystem;

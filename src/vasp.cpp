@@ -492,16 +492,19 @@ void Vasp::PerformConductivityCalculation()
     if (!conductivities.empty())
     {
         auto &last_conductivity = conductivities.back();
-        std::cout << "Final Average Conductivity: " << std::scientific
-                  << last_conductivity.average_conductivity << " 1/(Omega*m/s) at Energy: "
-                  << last_conductivity.energy << " eV" << std::endl;
+        std::ostringstream oss;
+        oss << std::scientific << last_conductivity.average_conductivity;
+        std::string scientific_notation = oss.str();
+        results_[CONDUCTIVITY] = scientific_notation;
     }
 
     if (!concentrations.empty())
     {
         auto &last_concentration = concentrations.back();
-        std::cout << "Final Carrier Concentration: " << last_concentration.concentration
-                  << " 1/cm^3 at Energy: " << last_concentration.energy << " eV" << std::endl;
+        std::ostringstream oss;
+        oss << std::scientific << last_concentration.concentration;
+        std::string scientific_notation = oss.str();
+        results_[MOBILITY] = scientific_notation;
     }
     vaspkit.stopVaspkit();
 }
