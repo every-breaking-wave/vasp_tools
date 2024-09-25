@@ -427,6 +427,12 @@ void Vasp::PerformThermalExpansionCalculation()
     std::getline(outfile, line);
     results_[THERMAL_EXPANSION] = line;
     std::cout << "Thermal expansion coefficient: " << line << std::endl;
+
+    // Extract the specific heat capacity from the output file
+    std::ifstream outfile2("specified_heat_result.txt");
+    std::getline(outfile2, line);
+    results_[SPECIFIC_HEAT] = line;
+    std::cout << "Specific heat capacity: " << line << std::endl;
 }
 
 void Vasp::PerformConductivityCalculation()

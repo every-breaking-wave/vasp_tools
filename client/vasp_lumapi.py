@@ -13,11 +13,9 @@
 import asyncio
 import aiohttp
 import os
-import asyncio
-import os
 import time
 
-
+# TODO: 更改为实际的VASP服务器IP和端口
 vasp_host_ip = '10.0.16.21'
 vasp_host_port = 12345
 
@@ -89,20 +87,12 @@ class RemoteClient:
         await self.writer.wait_closed()
 
 
-
-
-
-
-# 定义一个VASP类
 class VASP:
 
-    def __init__(self, vasp_host_ip, vasp_host_port):
+    def __init__(self):
         # 初始化 RemoteClient 实例作为 VASP 类的成员变量
         self.client = RemoteClient(vasp_host_ip, vasp_host_port)
-        self.filepath = None  # 初始化 filepath 为 None
-        # 确认client的writer和reader已经初始化
-        # assert self.client.writer is not None
-        # assert self.client.reader is not None
+        self.filepath = None
         print('Client initialized')
     
     async def connect_client(self):
@@ -121,13 +111,18 @@ class VASP:
     async def run(self):
         await self.send_file(self.filepath)
 
+    def getresult(self):
+        pass
+
+    def visualize(self):
+        pass
+
     def startSimulation():
         pass
 
 
     def stopSimulation():
         pass
-
 
     def hideResultView():
         pass
@@ -136,45 +131,23 @@ class VASP:
     def showResultView():
         pass
 
-
     def saveProject():
         pass
-
 
     def hideDock():
         pass
 
-
     def showDock():
         pass
-
 
     def loadProjectFile(fileName):
         pass
 
-
     def redirectResultPath(path):
         pass
-
 
     def receiveInputFile(fileArray):
         pass
 
-
     def requireMessage(messageType):
         pass
-
-
-
-
-async def main():
-    vasp = VASP(vasp_host_ip, vasp_host_port)
-    await vasp.connect_client()
-    vasp.load('D:/Materials/SiO2/POSCAR')
-    await vasp.run()
-    # # Send a command to the server
-    # await client.connect()
-    # await client.send_command('ls -l')
-
-# Run the main function
-asyncio.run(main())

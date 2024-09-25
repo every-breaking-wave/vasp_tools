@@ -26,7 +26,10 @@ This project is a VASP tool that can calculate conductivity, dielectric constant
     cd build
     make 
     ```
-
+    Or you can simply run 
+    ```
+    ./script/compile.sh
+    ```
 4. Run the server:
 
     ```
