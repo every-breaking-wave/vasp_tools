@@ -55,7 +55,9 @@ static std::map<std::string, std::string> units = {
     {THERMAL_CONDUCTIVITY, "W/mK"},
     {CONDUCTIVITY, "S/m"},
     {MOBILITY, "cm^2/Vs"},
-    {BANDGAP, "eV"}};
+    {BANDGAP, "eV"},
+    {SPECIFIC_HEAT, "J/kgK"}
+    };
 
 
 ////////////////////////// Utility Functions //////////////////////////

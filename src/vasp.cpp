@@ -400,14 +400,16 @@ void Vasp::PerformThermalExpansionCalculation()
     fs::copy_file(fs::path(opt_dir_) / CONTCAR, thermal_expansion_dir_ / POSCAR, fs::copy_option::overwrite_if_exists);
 
     // use prepared INCAR file
-    fs::copy_file(root_dir_ / CONFIG_DIR / "thermalExpansion.INCAR", thermal_expansion_dir_ / INCAR, fs::copy_option::overwrite_if_exists);
+    fs::current_path(root_dir_ / CONFIG_DIR);
 
-    fs::copy_file(root_dir_ / CONFIG_DIR / "mesh.conf", thermal_expansion_dir_ / "mesh.conf", fs::copy_option::overwrite_if_exists);
+    fs::copy_file("thermalExpansion.INCAR", thermal_expansion_dir_ / INCAR, fs::copy_option::overwrite_if_exists);
 
-    fs::copy_file(root_dir_ / SCRIPT_DIR / "thermalExpansionAnalysis.sh", thermal_expansion_dir_ / "thermalExpansionAnalysis.sh", fs::copy_option::overwrite_if_exists);
+    fs::copy_file("mesh.conf", thermal_expansion_dir_ / "mesh.conf", fs::copy_option::overwrite_if_exists);
 
-    fs::copy_file(root_dir_ / SCRIPT_DIR / "computeThermalExpansion.py", thermal_expansion_dir_ / "computeThermalExpansion.py", fs::copy_option::overwrite_if_exists);
+    fs::current_path(root_dir_ / SCRIPT_DIR);
 
+    CopyFiles({"thermalExpansionAnalysis.sh", "computeThermalExpansion.py", "computeSpecifiedHeat.py", "getDensity.py"}, thermal_expansion_dir_);
+    
     fs::current_path(thermal_expansion_dir_);
 
     try
@@ -487,7 +489,6 @@ void Vasp::PerformConductivityCalculation()
     std::cout << "Running BoltzTraP calculation..." << std::endl;
     vaspkit.singleCommand("682\n");
     std::this_thread::sleep_for(std::chrono::seconds(5));
-    // TODO: 处理电导率和载流子浓度的输出文件
 
     std::string conductivity_file = "ELECTRONIC_CONDUCTIVITY.dat";
     std::string carrier_concentration_file = "CARRIER_CONCENTRATION.dat";
