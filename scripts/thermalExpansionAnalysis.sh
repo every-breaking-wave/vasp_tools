@@ -18,13 +18,13 @@ done
 for i in "${nums[@]}"  
 do
     cd "./${i}"
-    mpirun -np 12 vasp_std
+    mpirun -np 16 vasp_std > ../log-$i
     cd ..
 done
 
 # 第3步
 mkdir -p CP
-j = 1
+j=1
 for i in "${nums[@]}"  
 do
     cp mesh.conf ./$i
@@ -38,13 +38,11 @@ done
 
 
 #第5步
+# 清空v-e.dat文件
+echo "" > v-e.dat
+
 for i in "${nums[@]}"  
-do
-    # i 为  1，跳过
-    if [ "$i" == "1" ]; then
-        continue
-    fi
-    
+do    
     cd "./${i}" || exit  # 尝试进入目录，如果失败则退出脚本  
     
     # 初始化一个float类型的变量，从CONTCAR文件中读取  
@@ -64,17 +62,21 @@ done
 
 
 #第6步
+# phonopy-qha v-e.dat ./CP/thermal_properties-{1..21}.yaml > thermo.dat
+# 获取nums数组的长度
+# length=${#nums[@]}
+# echo "length is $length"
 phonopy-qha v-e.dat ./CP/thermal_properties-{1..21}.yaml > thermo.dat
 
-#第7步
+#第7步 计算热膨胀系数
 # 确保thermal_expansion.dat文件生成
 # 运行python3 computeThermalExpansion.py
 python3 computeThermalExpansion.py
 
 
 #第8步 计算比热容
-# 使用 PHONOPY 计算比热容 (C_v)
-phonopy --cp --t thermal_properties.yaml
+# 使用 PHONOPY 计算比热容 (C_v),并将结果保存到文件中
+python3 computeSpecifiedHeat.py
 
 # 第9步: 计算热导率
 # 对于热导率，可能需要结合第一性原理计算结果与更复杂的模型，如
