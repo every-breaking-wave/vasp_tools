@@ -45,6 +45,7 @@ public:
     void PerformThermalExpansionCalculation();
     void PerformConductivityCalculation();
     void UseHistoryOptDir();
+    void GetDensity();
     fs::path  StoreResults();
 
 private:

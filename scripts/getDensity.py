@@ -3,7 +3,7 @@ from mendeleev import element
 
 
 # 从 POSCAR 或 CONTCAR 文件中提取元素信息和数量
-def get_elements_and_counts_from_poscar(file_path='CONTCAR'):
+def get_elements_and_counts_from_poscar(file_path='POSCAR'):
     with open(file_path, 'r') as file:
         lines = file.readlines()
         elements = lines[5].split()
@@ -38,7 +38,7 @@ def read_volume_from_outcar(outcar_file):
                 return float(line.split()[-1])
 
 
-def calculate_density(outcar_file='OUTCAR', poscar_file='CONTCAR'):
+def calculate_density(outcar_file='OUTCAR', poscar_file='POSCAR'):
     volume = read_volume_from_outcar(outcar_file)  # Å³
     elements, counts = get_elements_and_counts_from_poscar(poscar_file)
     
@@ -55,6 +55,8 @@ def calculate_density(outcar_file='OUTCAR', poscar_file='CONTCAR'):
     
     # 密度计算，单位 KG/m³
     density = (total_mass / avogadro_number) / volume_cm3 * 1e3
+
+    density = round(density)
 
     return density
 

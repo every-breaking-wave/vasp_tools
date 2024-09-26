@@ -79,9 +79,32 @@ python3 computeThermalExpansion.py
 python3 computeSpecifiedHeat.py
 
 # 第9步: 计算热导率
-# 对于热导率，可能需要结合第一性原理计算结果与更复杂的模型，如
-# Boltzmann Transport Equation (BTE) 或其他理论模型
-# 如果使用 ShengBTE, 需要以下步骤:
-# 1. 生成 FORCE_CONSTANTS 文件: phonopy --fc vasprun.xml > FORCE_CONSTANTS
-# 2. 创建第二个配置文件，如 ShengBTE.conf
-# 3. 运行 ShengBTE: shengbte ShengBTE.conf
+# NOTE: 以下计算过程是可行的，但是计算时间过长，暂不使用
+# conda activate phono3py
+
+# phono3py -d --dim="1 1 1" -c POSCAR
+
+# # 获取产生了多少个POSCAR文件
+# num_poscar=$(ls -l | grep POSCAR | wc -l) - 1
+# echo "产生了 $num_poscar 个POSCAR文件"
+
+
+# for i in {00001..00005}; do
+#     mkdir $i
+#     cp POSCAR-$i ./$i/POSCAR
+#     cp INCAR KPOINTS POTCAR ./$i
+#     cd ./$i
+#     mpirun -np 12 vasp_std
+#     cd ../
+# done
+
+# # 提取三阶力常数
+# phono3py --cf3 {00001..00005}/vasprun.xml
+
+# # 提取二阶力常数
+# phono3py --dim="1 1 1" --sym-fc -c POSCAR
+
+# # 计算热导率。
+# phono3py --fc3 --fc2 --dim="1 1 1" --mesh="19 19 19" -c POSCAR --br | tee thermal_conductivity.txt
+
+# conda deactivate

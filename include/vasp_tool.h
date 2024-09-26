@@ -49,7 +49,7 @@ namespace fs = boost::filesystem;
 
 
 static std::map<std::string, std::string> units = {
-    {DENSITY, "g/cm^3"},
+    {DENSITY, "KG/m^3"},
     {DIELECTRIC, ""},
     {THERMAL_EXPANSION, "1/K"},
     {THERMAL_CONDUCTIVITY, "W/mK"},

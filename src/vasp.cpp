@@ -435,6 +435,13 @@ void Vasp::PerformThermalExpansionCalculation()
     std::getline(outfile2, line);
     results_[SPECIFIC_HEAT] = line;
     std::cout << "Specific heat capacity: " << line << std::endl;
+
+    // Extract the thermal conductivity from the output file
+    // NOTE: 这部分可算，但是耗时太长，暂时不用
+    // std::ifstream outfile3("thermal_conductivity_result.txt");
+    // std::getline(outfile3, line);
+    // results_[THERMAL_CONDUCTIVITY] = line;
+    // std::cout << "Thermal conductivity: " << line << std::endl;
 }
 
 void Vasp::PerformConductivityCalculation()
@@ -560,6 +567,34 @@ void Vasp::UseHistoryOptDir()
     }
 }
 
+void Vasp::GetDensity()
+{
+    fs::current_path(opt_dir_);
+
+    // 执行 getDensity.py 脚本并捕获其输出
+    fs::copy_file(root_dir_ / SCRIPT_DIR / "getDensity.py", "getDensity.py", fs::copy_option::overwrite_if_exists);
+
+    std::string command = "python3 getDensity.py > density_result.txt";
+
+    try
+    {
+        RunCommand(command);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << '\n';
+        return;
+    }
+
+    // 从输出文件中提取密度值
+    std::ifstream density_file("density_result.txt");
+    std::string line;
+    std::getline(density_file, line);
+    results_[DENSITY] = line;
+    std::cout << "Density: " << line << std::endl;
+    
+}
+
 fs::path Vasp::StoreResults()
 {
     fs::current_path(compute_dir_);
@@ -567,6 +602,10 @@ fs::path Vasp::StoreResults()
     std::ofstream result_file(result_file_name);
     for (const auto &result : results_)
     {
+        if (result.second.empty())
+        {
+            continue;
+        }
         result_file << result.first << " = " << result.second << " " << units[result.first] << std::endl;
         std::cout << result.first << " = " << result.second << " " << units[result.first] << std::endl;
     }
