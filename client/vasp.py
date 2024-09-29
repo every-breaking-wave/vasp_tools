@@ -1,10 +1,13 @@
 import socket
 import asyncio
+import subprocess
 import sys
 import importlib.util
 import time
 from concurrent.futures import ThreadPoolExecutor
 import os
+
+from click import command
 
 vasp = None
 lumapi = None
@@ -203,6 +206,7 @@ def parseFromFULDSIMessage(data):
 
 
 async def run_vasp():
+    global vasp
     vasp = VASP()
     print("start vasp")
     await vasp.connect_client()
@@ -217,6 +221,9 @@ async def startVASP():
     global scriptPath
     global filePath
     logFile = "vasp_log.txt"
+    exeFile = "C:/Users/PS/Documents/VESTA-win64/VESTA.exe"
+    command = [exeFile, filePath]
+    subprocess.Popen(command, stdout=subprocess.PIPE)
 
 def isSimulationDone():
     if vasp != None:
@@ -229,8 +236,13 @@ def getLogFilePath():
     return ""
 
 def visualVASPInner():
-    if vasp != None:
-        vasp.visualize()
+    global vasp
+    exeFile = "C:/Users/PS/Documents/VESTA-win64/VESTA.exe"
+    command = [exeFile, vasp.output_path + "/CONTCAR"]
+    subprocess.Popen(command, stdout=subprocess.PIPE)
+    time.sleep(3)
+    command1 = [exeFile, vasp.output_path + "/CHGCAR"]
+    subprocess.Popen(command1, stdout=subprocess.PIPE)
 
 def visualVASP():
     executor.submit(visualVASPInner)
@@ -260,7 +272,7 @@ def listen_for_data(fuldsisConnect):
             sendMessageToFUIDSL(fuldsisConnect, path)
             asyncio.run(run_vasp())
             sendMessageToFUIDSL(fuldsisConnect,'Analyze Done.')
-            
+            visualVASPInner()
         if cmd == 'ShowResultView':
             visualVASPInner()
 
