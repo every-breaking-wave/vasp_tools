@@ -11,7 +11,6 @@
 # def requireMessage(messageType)
 
 import asyncio
-import aiohttp
 import os
 import time
 import struct
@@ -126,6 +125,10 @@ class RemoteClient:
 
 class VASP:
 
+    client = None
+    filepath = None
+    isDone = False
+
     def __init__(self):
         # 初始化 RemoteClient 实例作为 VASP 类的成员变量
         self.client = RemoteClient(vasp_host_ip, vasp_host_port)
@@ -147,44 +150,15 @@ class VASP:
 
     async def run(self):
         await self.send_file(self.filepath)
+        self.isDone = True
 
     def getresult(self):
         pass
 
     def visualize(self):
+        command = f'D:\VESTA\VESTA-win64\VESTA.exe" {self.output_path}\\CONTCAR'
+        asyncio.run(self.send_command(command))
         pass
 
-    def startSimulation():
-        pass
-
-
-    def stopSimulation():
-        pass
-
-    def hideResultView():
-        pass
-
-
-    def showResultView():
-        pass
-
-    def saveProject():
-        pass
-
-    def hideDock():
-        pass
-
-    def showDock():
-        pass
-
-    def loadProjectFile(fileName):
-        pass
-
-    def redirectResultPath(path):
-        pass
-
-    def receiveInputFile(fileArray):
-        pass
-
-    def requireMessage(messageType):
-        pass
+    def isDone(self):
+        return self.isDone

@@ -50,8 +50,10 @@ def startVASP():
     # LOG文件路径在filepath同一目录下 （filepath是POSCAR文件
     logFile = "vasp_log.txt"
 
-def isSimulationDone(key):
-    return simulationTask.done()
+def isSimulationDone():
+    if vasp != None:
+        return vasp.isDone()
+    return False
 
 def getLogFilePath():
     if vasp != None:
@@ -90,6 +92,7 @@ def listen_for_data(fuldsisConnect):
             sendMessageToFUIDSL(fuldsisConnect, path)
             asyncio.run(vasp.run())
             sendMessageToFUIDSL(fuldsisConnect,'Analyze Done.')
+            
         if cmd == 'ShowResultView':
             visualVASPInner()
 
