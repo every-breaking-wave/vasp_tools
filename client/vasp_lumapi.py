@@ -128,6 +128,7 @@ class VASP:
     client = None
     filepath = None
     isDone = False
+    output_path = None
 
     def __init__(self):
         # 初始化 RemoteClient 实例作为 VASP 类的成员变量
@@ -149,6 +150,10 @@ class VASP:
         self.filepath = file_path
 
     async def run(self):
+        # 为每次运行创建一个新的输出目录
+        self.output_path = f'output_{time.time()}'
+        os.makedirs(self.output_path, exist_ok=True)
+        
         await self.send_file(self.filepath)
         self.isDone = True
 
