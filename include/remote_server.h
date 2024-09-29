@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include "vasp.h"
+#include <vector>
 
 using boost::asio::ip::tcp;
 namespace fs = boost::filesystem;
@@ -37,7 +38,7 @@ private:
 
     std::string ExecuteCommand(const std::string &command);
 
-    fs::path PerformVaspCompute(const std::string &poscarPath);
+    std::vector<std::string> PerformVaspCompute(const std::string &poscarPath);
 
     void HandleFileCompletion(const std::string &filename, std::shared_ptr<tcp::socket> socket);
 

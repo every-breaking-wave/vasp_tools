@@ -5,28 +5,33 @@
 
 using boost::asio::ip::tcp;
 
-#define HISTORY 0
+#define HISTORY 1
 
 void RemoteServer::HandleFileCompletion(const std::string &filename, std::shared_ptr<tcp::socket> socket)
 {
     if (fs::is_regular_file(filename) && filename.substr(0, 6) == "POSCAR")
     {
-        fs::path result_file = PerformVaspCompute(filename);
+        std::vector<std::string> result_files = PerformVaspCompute(filename);
 
-        // 通知客户端计算完成，并将结果文件发送回客户端
-        boost::asio::async_write(*socket, boost::asio::buffer("COMPUTE finished \n"),
-                                 [socket, result_file](boost::system::error_code ec, std::size_t /*length*/)
-                                 {
-                                     if (!ec)
-                                     {
-                                         auto result_file_stream = std::make_shared<std::ifstream>(result_file.filename().string(), std::ios::binary);
-                                         send_file_content(result_file_stream, socket.get());
-                                     }
-                                     else
-                                     {
-                                         std::cerr << "Failed to send command output: " << ec.message() << std::endl;
-                                     }
-                                 });
+        for (auto result_file : result_files)
+        {
+            // 发送文件名
+            //  std::string file_name = "FILE " + result_file.filename().string() + "\n";
+            //  boost::asio::write(*socket, boost::asio::buffer(file_name));
+            // resultfile 是绝对路径,要提取文件名
+            std::string file_name = result_file.substr(result_file.find_last_of("/") + 1);
+            std::cout << "Sending file: " << result_file << std::endl;
+            auto result_file_stream = std::make_shared<std::ifstream>(result_file, std::ios::binary);
+            send_file_content(result_file_stream, socket.get(), file_name);
+            // END_OF_FILE 用于标记文件结束
+        }
+            std::string endfile = "END_OF_FILE";
+            // 创建这个文件
+            std::ofstream endfilestream(endfile);
+            endfilestream.close();
+            auto endfilestream_ptr = std::make_shared<std::ifstream>(endfile, std::ios::binary);
+            send_file_content(endfilestream_ptr, socket.get(), endfile);
+            fs::remove(endfile);
     }
 }
 
@@ -52,7 +57,7 @@ void RemoteServer::SendFileToServer(const std::string &filename)
         boost::asio::write(socket, boost::asio::buffer(file_name));
 
         // 发送文件内容
-        send_file_content(file, &socket);
+        send_file_content(file, &socket, filename);
         io_context.run();
     }
     catch (std::exception &e)
@@ -171,7 +176,7 @@ std::string RemoteServer::ExecuteCommand(const std::string &command)
     return result;
 }
 
-fs::path RemoteServer::PerformVaspCompute(const std::string &poscar_name)
+std::vector<std::string> RemoteServer::PerformVaspCompute(const std::string &poscar_name)
 {
     std::string cwd = get_current_dir_name();
     // 为每次 VASP 计算准备一个新的目录、vasp对象
@@ -198,18 +203,20 @@ fs::path RemoteServer::PerformVaspCompute(const std::string &poscar_name)
         }
     }
 
-    // std::cout << "Performing dielectric calculation..." << std::endl;
-    // vasp->PerformDielectricCalculation();
+    vasp->GetDensity();
 
-    // std::cout << "Performing band structure calculation..." << std::endl;
-    // vasp->PerformBandStructureCalculation();
+    std::cout << "Performing dielectric calculation..." << std::endl;
+    vasp->PerformDielectricCalculation();
+
+    std::cout << "Performing band structure calculation..." << std::endl;
+    vasp->PerformBandStructureCalculation();
 
     std::cout << "Performing conductivity calculation..." << std::endl;
     vasp->PerformConductivityCalculation();
 
-    // std::cout << "Performing thermal expansion calculation..." << std::endl;
-    // std::cout << "This could take a long time." << std::endl;
-    // vasp->PerformThermalExpansionCalculation();
+    std::cout << "Performing thermal expansion calculation..." << std::endl;
+    std::cout << "This could take a long time." << std::endl;
+    vasp->PerformThermalExpansionCalculation();
 
     std::cout << "VASP calculation complete." << std::endl;
     return vasp->StoreResults();

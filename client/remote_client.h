@@ -41,11 +41,11 @@ public:
             return;
         }
         boost::asio::async_write(socket_, boost::asio::buffer(file_header),
-                                 [this, file](boost::system::error_code ec, std::size_t /*length*/)
+                                 [this, file, file_name](boost::system::error_code ec, std::size_t /*length*/)
                                  {
                                      if (!ec)
                                      {
-                                         send_file_content(file, &socket_);
+                                         send_file_content(file, &socket_, file_name);
                                      }
                                      else
                                      {

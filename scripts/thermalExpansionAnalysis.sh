@@ -22,6 +22,10 @@ do
     cd ..
 done
 
+# 将上述的日志文件合并到一个文件中
+cat log-* > vasp_thermal_expansion.log
+
+
 # 第3步
 mkdir -p CP
 j=1

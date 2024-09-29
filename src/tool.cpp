@@ -5,32 +5,44 @@ namespace fs = boost::filesystem;
 
 using boost::asio::ip::tcp;
 
-void send_file_content(std::shared_ptr<std::ifstream> file, tcp::socket* socket)
-{
-    auto buffer = std::make_shared<std::array<char, 1024>>();
 
-    if (file->read(buffer->data(), buffer->size()) || file->gcount() > 0)
-    {
-        boost::asio::async_write(*socket, boost::asio::buffer(*buffer, file->gcount()),
-                                 [file, buffer, socket](boost::system::error_code ec, std::size_t /*length*/)
-                                 {
-                                     if (!ec)
-                                     {
-                                         // 继续发送剩余文件内容
-                                         send_file_content(file, socket);
-                                     }
-                                     else
-                                     {
-                                         std::cerr << "Failed to send file content: " << ec.message() << std::endl;
-                                         socket->close();  // 处理错误时关闭连接
-                                     }
-                                 });
+void send_file_content(std::shared_ptr<std::ifstream> file, tcp::socket* socket, std::string filename) {
+    if (!file || !file->is_open()) {
+        std::cerr << "file name " << filename << " is not valid or not open." << std::endl;
+        std::cerr << "File stream is not valid or not open." << std::endl;
+        return;
     }
-    else
-    {
-        std::cout << "File sent successfully." << std::endl;
-        socket->shutdown(tcp::socket::shutdown_send);  // 发送完毕后关闭发送通道
-    }
+
+    try {
+        // 文件名长度
+        uint32_t filename_len = filename.size();
+        boost::asio::write(*socket, boost::asio::buffer(&filename_len, sizeof(filename_len)));
+
+        // 文件名
+        boost::asio::write(*socket, boost::asio::buffer(filename));
+
+        // 获取文件大小
+        file->seekg(0, std::ios::end);
+        uint64_t filesize = file->tellg();
+        file->seekg(0, std::ios::beg);
+
+        // 发送文件大小
+        boost::asio::write(*socket, boost::asio::buffer(&filesize, sizeof(filesize)));
+
+        // 发送文件内容
+        std::vector<char> buffer(1024);
+        while (!file->eof()) {
+            file->read(buffer.data(), buffer.size());
+            std::streamsize bytes_read = file->gcount();
+
+            if (bytes_read > 0) {
+                boost::asio::write(*socket, boost::asio::buffer(buffer.data(), bytes_read));
+            }
+        }
+        std::cout << "File content sent successfully: " << filename << std::endl;
+    } catch (std::exception &e) {
+        std::cerr << "Exception while sending file content: " << e.what() << std::endl;
+    } 
 }
 
 

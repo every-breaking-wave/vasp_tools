@@ -11,7 +11,7 @@
 #include <iostream>
 #include <boost/filesystem.hpp>
 #include "vasp_tool.h"
-
+#include <vector>
 
 namespace fs = boost::filesystem;
 
@@ -46,7 +46,7 @@ public:
     void PerformConductivityCalculation();
     void UseHistoryOptDir();
     void GetDensity();
-    fs::path  StoreResults();
+    std::vector<std::string>  StoreResults();
 
 private:
     fs::path data_dir_;             // 数据目录

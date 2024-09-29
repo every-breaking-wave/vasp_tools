@@ -595,7 +595,7 @@ void Vasp::GetDensity()
     
 }
 
-fs::path Vasp::StoreResults()
+std::vector<std::string> Vasp::StoreResults()
 {
     fs::current_path(compute_dir_);
     std::string result_file_name = "results_" + std::to_string(std::time(nullptr)) + ".txt";
@@ -611,5 +611,29 @@ fs::path Vasp::StoreResults()
     }
     result_file.close();
     fs::path resultsPath = fs::current_path() / result_file_name;
-    return resultsPath;
+
+    // 将各个目录下面的日志整合到一个文件中
+    std::string log_file_name = "vasp_log.txt";
+    std::ofstream log_file(log_file_name);
+    std::vector<fs::path> logFiles = {opt_dir_ / "vasp_opt.log", static_dir_ / "vasp_static.log", dielectric_dir_ / "vasp_dielectric.log", band_dir_ / "vasp_band_scf.log", thermal_expansion_dir_ / "vasp_thermal_expansion.log", conductivity_dir_ / "vasp_conductivity.log"};
+    for (const auto &logFile : logFiles)
+    {
+        // 首先判断文件是否存在
+        if (!fs::exists(logFile))
+        {
+            continue;
+        }
+        log_file << "======================" << logFile << "======================\n";
+        std::ifstream log(logFile.string());
+        log_file << log.rdbuf();
+        log_file << "=====================================================\n";
+
+    }
+    
+    std::vector<std::string> resultsPathVec;
+    resultsPathVec.push_back(resultsPath.string());
+    resultsPathVec.push_back(static_dir_.string() + "/CHGCAR");
+    resultsPathVec.push_back(static_dir_.string() + "/CONTCAR");
+    resultsPathVec.push_back(compute_dir_.string() + "/" + log_file_name);
+    return resultsPathVec;
 }
