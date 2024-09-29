@@ -14,6 +14,7 @@ import asyncio
 import aiohttp
 import os
 import time
+import struct
 
 # TODO: 更改为实际的VASP服务器IP和端口
 vasp_host_ip = '10.0.16.21'
@@ -27,7 +28,47 @@ class RemoteClient:
 
     async def connect(self):
         self.reader, self.writer = await asyncio.open_connection(self.server, self.port)
-    
+
+    async def receive_file(self):
+        print('Receiving file...')
+        # 接收文件名长度（4 字节）
+        # 先读第一条 COMPUTE finished \n
+        # compute_finished = await self.reader.readuntil(b'\n')
+        # print(f'Compute finished: {compute_finished}')
+        filename_len_data = await self.reader.readexactly(4)
+        print(f'Filename length data: {filename_len_data}')
+        if not filename_len_data:
+            return False  # 没有接收到数据，结束接收
+        filename_len = struct.unpack('I', filename_len_data)[0]
+
+        print(f'Filename length: {filename_len}')
+
+        # 接收文件名
+        filename = (await self.reader.readexactly(filename_len)).decode()
+
+        if filename.startswith('END_OF_FILE'):
+            return False
+        
+        # 接收文件大小（8 字节）
+        filesize_data = await self.reader.readexactly(8)
+        filesize = struct.unpack('Q', filesize_data)[0]
+
+        # 接收文件内容
+        with open(filename, 'wb') as f:
+            bytes_received = 0
+            while bytes_received < filesize:
+                chunk_size = min(1024, filesize - bytes_received)
+                chunk = await self.reader.readexactly(chunk_size)
+                if not chunk:
+                    break
+                f.write(chunk)
+                bytes_received += len(chunk)
+            print(f"Received file: {filename} ({filesize} bytes)")
+        
+
+        return True
+
+
     async def send_file(self, file_path):
         file_name = os.path.basename(file_path)
         file_header = f"FILE{file_name}\n"
@@ -56,12 +97,8 @@ class RemoteClient:
             # Wait for the response
             print('Waiting for server response...')
             while True:
-                # 持续接收服务器的消息，直到不再有消息
-                response = await self.reader.read(1024)
-                if not response:
-                    break
-                print(f'Server response: {response.decode()}')
-
+                    if not await self.receive_file():
+                        break
 
         except Exception as e:
             print(f'Error sending file: {e}')

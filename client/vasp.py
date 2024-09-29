@@ -1,5 +1,5 @@
 import socket
-
+import asyncio
 import sys
 import importlib.util
 from concurrent.futures import ThreadPoolExecutor
@@ -45,24 +45,22 @@ def startVASP():
         spec_win.loader.exec_module(lumapi)
     if vasp == None:
         vasp = lumapi.VASP()
+    asyncio.run(vasp.connect_client())
     vasp.load(filePath)
-    # logFile = filePath.replace(".fsp", "_p0.log") # 由于VASP没有log文件，所以这里不需要
-
-def runSimulationVASP():
-    global simulationTask
-    if vasp != None:
-        simulationTask = executor.submit(lambda: vasp.run())
+    # LOG文件路径在filepath同一目录下 （filepath是POSCAR文件
+    logFile = "vasp_log.txt"
 
 def isSimulationDone(key):
     return simulationTask.done()
 
 def getLogFilePath():
-    return logFile
+    if vasp != None:
+        return vasp.output_path + "/vasp_log.txt"
+    return None
 
 def visualVASPInner():
     if vasp != None:
-        E = vasp.getresult("xy", "E")
-        vasp.visualize(E)
+        vasp.visualize()
 
 def visualVASP():
     executor.submit(visualVASPInner)
@@ -87,13 +85,32 @@ def listen_for_data(fuldsisConnect):
             break
         print("Received data:", data.decode())
         cmd = parseFromFULDSIMessage(data)
-        if cmd == 'Compute':
-            path = "VASP Compute " + getLogFilePath()
+        if cmd == 'AnalyzeAll':
+            path = "Analyze_Log_File " + getLogFilePath()
             sendMessageToFUIDSL(fuldsisConnect, path)
-            vasp.run()
-            sendMessageToFUIDSL(fuldsisConnect,'Compute Done.')
+            asyncio.run(vasp.run())
+            sendMessageToFUIDSL(fuldsisConnect,'Analyze Done.')
         if cmd == 'ShowResultView':
             visualVASPInner()
+
+
+async def test_api():
+    global vasp
+    global lumapi
+    global scriptPath
+    global filePath
+    if lumapi == None:
+        sys.path.append(scriptPath)
+        spec_win = importlib.util.spec_from_file_location("lumapi", scriptPath + "lumapi.py")
+        lumapi = importlib.util.module_from_spec(spec_win)
+        spec_win.loader.exec_module(lumapi)
+    if vasp == None:
+        vasp = lumapi.VASP()
+
+    await vasp.connect_client()
+    vasp.load(filePath)
+    await vasp.run()
+
 
 if __name__ == "__main__":
     scriptPath = sys.argv[1]
@@ -102,7 +119,8 @@ if __name__ == "__main__":
     ip = ipandPort[0]
     port = ipandPort[1]
     token = int(sys.argv[4])
-    # 请替换为你要连接的端口号
-    fuldsisConnect = create_tcp_connection(ip, int(port))
-    listen_for_data(fuldsisConnect)
-    fuldsisConnect.close()
+    asyncio.run(test_api())
+    # # 请替换为你要连接的端口号
+    # fuldsisConnect = create_tcp_connection(ip, int(port))
+    # # listen_for_data(fuldsisConnect)
+    # fuldsisConnect.close()
