@@ -11,7 +11,6 @@ from click import command
 
 vasp = None
 lumapi = None
-scriptPath = None
 filePath = None
 simulationTask = None
 logFile = None
@@ -28,7 +27,7 @@ import struct
 from fdtd import filePath
 
 # TODO: 更改为实际的VASP服务器IP和端口
-vasp_host_ip = '10.0.16.21'
+vasp_host_ip = '10.180.154.145'
 vasp_host_port = 12345
 
 class RemoteClient:
@@ -218,7 +217,6 @@ async def startVASP():
     global vasp
     global lumapi
     global logFile
-    global scriptPath
     global filePath
     logFile = "vasp_log.txt"
     exeFile = "C:/Users/PS/Documents/VESTA-win64/VESTA.exe"
@@ -280,7 +278,6 @@ def listen_for_data(fuldsisConnect):
 if __name__ == "__main__":
     # 获取当前文件所在的目录
     cwd = os.path.dirname(os.path.abspath(__file__))
-    scriptPath = cwd + "/vasp_"
     filePath = sys.argv[1]
     ipandPort = sys.argv[2].split(":")
     ip = ipandPort[0]
