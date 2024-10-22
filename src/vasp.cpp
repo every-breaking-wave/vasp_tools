@@ -582,7 +582,6 @@ void Vasp::GetDensity()
     std::string line;
     std::getline(density_file, line);
     results_[DENSITY] = line;
-    std::cout << "Density: " << line << std::endl;
 }
 
 std::vector<std::string> Vasp::StoreResults()

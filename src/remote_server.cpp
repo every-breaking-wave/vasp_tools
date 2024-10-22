@@ -5,7 +5,7 @@
 
 using boost::asio::ip::tcp;
 
-#define HISTORY 1
+#define HISTORY 0
 
 void RemoteServer::HandleFileCompletion(const std::string &filename, std::shared_ptr<tcp::socket> socket)
 {
@@ -191,18 +191,18 @@ std::vector<std::string> RemoteServer::PerformVaspCompute(const std::string &pos
 
     vasp->GetDensity();
 
-    // std::cout << "Performing dielectric calculation..." << std::endl;
-    // vasp->PerformDielectricCalculation();
+    std::cout << "Performing dielectric calculation..." << std::endl;
+    vasp->PerformDielectricCalculation();
 
     // std::cout << "Performing band structure calculation..." << std::endl;
     // vasp->PerformBandStructureCalculation();
 
-    // std::cout << "Performing conductivity calculation..." << std::endl;
-    // vasp->PerformConductivityCalculation();
+    std::cout << "Performing conductivity calculation..." << std::endl;
+    vasp->PerformConductivityCalculation();
 
-    // std::cout << "Performing thermal expansion calculation..." << std::endl;
-    // std::cout << "This could take a long time." << std::endl;
-    // vasp->PerformThermalExpansionCalculation();
+    std::cout << "Performing thermal expansion calculation..." << std::endl;
+    std::cout << "This could take a long time." << std::endl;
+    vasp->PerformThermalExpansionCalculation();
 
     std::cout << "VASP calculation complete." << std::endl;
     return vasp->StoreResults();
