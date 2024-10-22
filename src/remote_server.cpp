@@ -90,7 +90,11 @@ void RemoteServer::HandleConnection(std::shared_ptr<tcp::socket> socket)
                 std::string posfile;
                 if (pos != std::string::npos) {
                     posfile = data.substr(4, pos - 4) + "_" + std::to_string(time(nullptr));
+                    // 如果文件名不是POSCAR，修改为POSCAR
                     posfile = posfile.substr(posfile.find_last_of("/") + 1);
+                    if (posfile.substr(0, 6) != "POSCAR") {
+                        posfile = "POSCAR_" + std::to_string(time(nullptr));
+                    }
                     auto file = std::make_shared<std::ofstream>(posfile, std::ios::binary);
                     if (!file->is_open()) {
                         std::cerr << "Failed to open file: " << posfile << std::endl;
@@ -194,15 +198,15 @@ std::vector<std::string> RemoteServer::PerformVaspCompute(const std::string &pos
     std::cout << "Performing dielectric calculation..." << std::endl;
     vasp->PerformDielectricCalculation();
 
-    // std::cout << "Performing band structure calculation..." << std::endl;
-    // vasp->PerformBandStructureCalculation();
+    std::cout << "Performing band structure calculation..." << std::endl;
+    vasp->PerformBandStructureCalculation();
 
     std::cout << "Performing conductivity calculation..." << std::endl;
     vasp->PerformConductivityCalculation();
 
-    std::cout << "Performing thermal expansion calculation..." << std::endl;
-    std::cout << "This could take a long time." << std::endl;
-    vasp->PerformThermalExpansionCalculation();
+    // std::cout << "Performing thermal expansion calculation..." << std::endl;
+    // std::cout << "This could take a long time." << std::endl;
+    // vasp->PerformThermalExpansionCalculation();
 
     std::cout << "VASP calculation complete." << std::endl;
     return vasp->StoreResults();
