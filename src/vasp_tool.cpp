@@ -204,13 +204,13 @@ ConductivityData readElectronicConductivity(const std::string &file_path)
     ConductivityData data;
     std::ifstream file(file_path);
     std::string line;
-
+    data.average_conductivity = 1e50; // Set a large value for energy
+    
     while (std::getline(file, line))
     {
         if (line.empty() || line[0] == '#')
             continue; // Skip comments and empty lines
         std::istringstream iss(line);
-        data.average_conductivity = 1e50; // Set a large value for energy
         ConductivityData tmp;
         // 选择电导率最低的那个点
         if (iss >> tmp.energy >> std::skipws >> tmp.xx_conductivity >> std::skipws >> tmp.yy_conductivity >> std::skipws >> tmp.zz_conductivity >> std::skipws >> tmp.average_conductivity)
@@ -221,6 +221,7 @@ ConductivityData readElectronicConductivity(const std::string &file_path)
             }
         }
     }
+
     data.average_conductivity /= 1e13; // time constant
     return data;
 }
@@ -232,6 +233,7 @@ CarrierConcentrationData readCarrierConcentration(const std::string &file_path)
     std::string line;
 
     CarrierConcentrationData data;
+    data.energy = 1e5; // Set a large value for energy
     while (std::getline(file, line))
     {
         if (line.empty() || line[0] == '#')
@@ -256,8 +258,8 @@ CarrierConcentrationData readCarrierConcentration(const std::string &file_path)
         //     //           << data.concentration << " 1/cm^3" << std::endl;
         // }
     }
-    //data取正
-    data.energy = std::abs(data.energy);
+
+    data.concentration = std::abs(data.concentration);
     data.concentration *= 1e20; // Convert to 1/cm^3
     data.concentration /= 1e13; // time constant
 

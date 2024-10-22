@@ -312,6 +312,7 @@ def uploadResultToLib():
         thermal_expansion = ""
         thermal_conductivity = ""
         specific_heat = ""
+        bandgap = ""
 
         for line in result_lines:
             if line.startswith("CONDUCTIVITY"):   # 提取电导率，去掉单位
@@ -329,7 +330,9 @@ def uploadResultToLib():
             elif line.startswith("THERMAL CONDUCTIVITY"):
                 thermal_conductivity = line.split("=")[1].split()[0]
             elif line.startswith("SPECIFIC HEAT"):
-                specific_heat = line.split("=")[1].split
+                specific_heat = line.split("=")[1].split()[0]
+            elif line.startswith("BANDGAP"):
+                bandgap = line.split("=")[1].split()[0]
             else:
                 continue
 
@@ -342,9 +345,9 @@ def uploadResultToLib():
         thermal_expansion_str = f'ThermalExpansion="{thermal_expansion}"' if thermal_expansion else ""
         thermal_conductivity_str = f'ThermalConductivity="{thermal_conductivity}"' if thermal_conductivity else ""
         specific_heat_str = f'SpecificHeat="{specific_heat}"' if specific_heat else ""
-
+        bandgap_str = f'Bandgap="{bandgap}"' if bandgap else ""
         material_properties = f'    <Material>\n\t<CommonProperties Name="{formula}" Type="DIELECTRIC"' + \
-        f'{density_str} {conductivity_str} {diel_constant_str} {loss_tangent_str} {mobility_str}  {thermal_expansion_str} {thermal_conductivity_str} {specific_heat_str}/>\n    </Material>\n'
+        f'{density_str} {bandgap_str} {conductivity_str} {diel_constant_str} {loss_tangent_str} {mobility_str}  {thermal_expansion_str} {thermal_conductivity_str} {specific_heat_str}/>\n    </Material>\n'
         material_lib = material_lib.replace(
             "</MaterialProperties>", material_properties
         )
