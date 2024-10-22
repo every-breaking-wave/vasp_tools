@@ -1,7 +1,6 @@
 #include "vasp.h"
 #include "tool.h"
 
-
 #define DEBUG 1
 
 #ifdef DEBUG
@@ -9,9 +8,6 @@
 #else
 #define DEBUG_PRINT(x)
 #endif
-
-
-
 
 ////////////////////////// Vasp Class//////////////////////////
 std::string Vasp::PrepareDirectory(const std::string &computeTask = "")
@@ -366,9 +362,8 @@ void Vasp::PerformBandStructureCalculation()
     catch (const std::exception &e)
     {
         // std::cerr << e.what() << '\n';
-        // 直接对STATIC目录进行带结构计算
-        fs::current_path(static_dir_);
-        // 执行~/bin/read_band.sh并获取结果
+        // 直接对OPT目录进行带结构计算
+        fs::current_path(opt_dir_);
         try
         {
             fs::path read_band_script = root_dir_ / SCRIPT_DIR / "readbandgap.sh";
@@ -409,7 +404,7 @@ void Vasp::PerformThermalExpansionCalculation()
     fs::current_path(root_dir_ / SCRIPT_DIR);
 
     CopyFiles({"thermalExpansionAnalysis.sh", "computeThermalExpansion.py", "computeSpecifiedHeat.py", "getDensity.py"}, thermal_expansion_dir_);
-    
+
     fs::current_path(thermal_expansion_dir_);
 
     try
@@ -458,7 +453,7 @@ void Vasp::PerformConductivityCalculation()
 
     fs::current_path(conductivity_dir_);
 
-    ModifyINCAR(INCAR, {{"NSW", "0"}, {"SIGMA", "0.05"}, {"LWAVE", ".TRUE."}, {"LCHARG", ".TRUE."}, {"NEDOS", "2001"}});
+    ModifyINCAR(INCAR, {{"ISTART", "1"}, {"ISPIN", "1"}, {"LREAL", ".FALSE."}, {"LWAVE", ".TRUE."}, {"LCHARG", ".TRUE."}, {"ADDGRID", ".TRUE."}, {"ISMEAR", "0"}, {"SIGMA", "0.05"}, {"LORBIT", "11"}, {"NEDOS", "2001"}, {"NELM", "60"}, {"EDIFF", "1E-08"}}, true);
 
     // Generate KPOINTS file
     VaspkitManager &vaspkit = VaspkitManager::getInstance();
@@ -468,18 +463,20 @@ void Vasp::PerformConductivityCalculation()
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    std::string kspacingValue = ExtractKSpacingValue(vaspkit.getOutputFilename());
-    if (!kspacingValue.empty())
-    {
-        vaspkit.sendInputToVaspkit(kspacingValue + "\n");
-        vaspkit.stopVaspkit();
-    }
-    else
-    {
-        std::cerr << "Error: Could not Extract K Spacing value from VASPKIT output." << std::endl;
-        vaspkit.stopVaspkit();
-        return;
-    }
+    vaspkit.sendInputToVaspkit("0.005\n");
+    vaspkit.stopVaspkit();
+    // std::string kspacingValue = ExtractKSpacingValue(vaspkit.getOutputFilename());
+    // if (!kspacingValue.empty())
+    // {
+    //     vaspkit.sendInputToVaspkit(kspacingValue + "\n");
+    //     vaspkit.stopVaspkit();
+    // }
+    // else
+    // {
+    //     std::cerr << "Error: Could not Extract K Spacing value from VASPKIT output." << std::endl;
+    //     vaspkit.stopVaspkit();
+    //     return;
+    // }
     try
     {
         RunCommand("mpirun -np 12 vasp_std > vasp_conductivity.log");
@@ -500,26 +497,20 @@ void Vasp::PerformConductivityCalculation()
     std::string conductivity_file = "ELECTRONIC_CONDUCTIVITY.dat";
     std::string carrier_concentration_file = "CARRIER_CONCENTRATION.dat";
 
-    std::vector<ConductivityData> conductivities = readElectronicConductivity(conductivity_file);
-    std::vector<CarrierConcentrationData> concentrations = readCarrierConcentration(carrier_concentration_file);
-    
-    if (!conductivities.empty())
-    {
-        auto &last_conductivity = conductivities.back();
-        std::ostringstream oss;
-        oss << std::scientific << last_conductivity.average_conductivity;
-        std::string scientific_notation = oss.str();
-        results_[CONDUCTIVITY] = scientific_notation;
-    }
+    auto conductivity = readElectronicConductivity(conductivity_file);
+    auto concentration = readCarrierConcentration(carrier_concentration_file);
 
-    if (!concentrations.empty())
-    {
-        auto &last_concentration = concentrations.back();
-        std::ostringstream oss;
-        oss << std::scientific << last_concentration.concentration;
-        std::string scientific_notation = oss.str();
-        results_[MOBILITY] = scientific_notation;
-    }
+    // 将结果保存到results_中, 保留三位有效数字
+    std::ostringstream oss;
+    oss << std::scientific << std::setprecision(2) << conductivity.average_conductivity;
+    std::string scientific_notation = oss.str();
+    results_[CONDUCTIVITY] = scientific_notation;
+
+    std::ostringstream oss2;
+    oss2 << std::scientific << std::setprecision(2) << concentration.concentration;
+    std::string scientific_notation2 = oss2.str();
+    results_[MOBILITY] = scientific_notation2;
+
     vaspkit.stopVaspkit();
 }
 
@@ -592,7 +583,6 @@ void Vasp::GetDensity()
     std::getline(density_file, line);
     results_[DENSITY] = line;
     std::cout << "Density: " << line << std::endl;
-    
 }
 
 std::vector<std::string> Vasp::StoreResults()
@@ -627,10 +617,12 @@ std::vector<std::string> Vasp::StoreResults()
         std::ifstream log(logFile.string());
         log_file << log.rdbuf();
         log_file << "=====================================================\n";
-
     }
-    
+
     std::vector<std::string> resultsPathVec;
+
+
+
     resultsPathVec.push_back(resultsPath.string());
     resultsPathVec.push_back(static_dir_.string() + "/CHGCAR");
     resultsPathVec.push_back(static_dir_.string() + "/CONTCAR");

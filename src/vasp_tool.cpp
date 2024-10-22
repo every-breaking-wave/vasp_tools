@@ -1,6 +1,5 @@
 #include "vasp_tool.h"
 
-
 ////////////////////////// Utility Functions //////////////////////////
 
 std::string ExtractKmeshValue(const std::string &filename)
@@ -58,7 +57,7 @@ std::string ExtractKSpacingValue(const std::string &filename)
     return kspacingValue;
 }
 
-void ModifyINCAR(fs::path filepath, const std::map<std::string, std::string> &options)
+void ModifyINCAR(fs::path filepath, const std::map<std::string, std::string> &options, bool clear)
 {
     std::ifstream infile(filepath.string());
     std::stringstream buffer;
@@ -72,37 +71,39 @@ void ModifyINCAR(fs::path filepath, const std::map<std::string, std::string> &op
     }
 
     // Read the file line by line
-    while (std::getline(infile, line))
+    if (!clear)
     {
-        std::string key, value;
-        std::size_t pos = line.find('=');
-
-        if (pos != std::string::npos)
+        while (std::getline(infile, line))
         {
-            key = line.substr(0, pos);
-            value = line.substr(pos + 1);
+            std::string key, value;
+            std::size_t pos = line.find('=');
 
-            // Trim whitespace around key and value
-            key.erase(0, key.find_first_not_of(" \t"));
-            key.erase(key.find_last_not_of(" \t") + 1);
-            value.erase(0, value.find_first_not_of(" \t"));
-            value.erase(value.find_last_not_of(" \t") + 1);
-
-            // If the key exists in options, modify it
-            if (options.find(key) != options.end())
+            if (pos != std::string::npos)
             {
-                value = options.at(key);
-                modifiedKeys[key] = true; // Mark as modified
-            }
+                key = line.substr(0, pos);
+                value = line.substr(pos + 1);
 
-            buffer << key << " = " << value << std::endl;
-        }
-        else
-        {
-            buffer << line << std::endl; // Keep the line unchanged if it does not contain '='
+                // Trim whitespace around key and value
+                key.erase(0, key.find_first_not_of(" \t"));
+                key.erase(key.find_last_not_of(" \t") + 1);
+                value.erase(0, value.find_first_not_of(" \t"));
+                value.erase(value.find_last_not_of(" \t") + 1);
+
+                // If the key exists in options, modify it
+                if (options.find(key) != options.end())
+                {
+                    value = options.at(key);
+                    modifiedKeys[key] = true; // Mark as modified
+                }
+
+                buffer << key << " = " << value << std::endl;
+            }
+            else
+            {
+                buffer << line << std::endl; // Keep the line unchanged if it does not contain '='
+            }
         }
     }
-
     infile.close();
 
     // Append new key-value pairs that were not found in the file
@@ -198,10 +199,9 @@ void CalculateBandgap(const std::vector<std::vector<double>> &energies, double &
     bandgap = CBM - VBM;
 }
 
-
-std::vector<ConductivityData> readElectronicConductivity(const std::string &file_path)
+ConductivityData readElectronicConductivity(const std::string &file_path)
 {
-    std::vector<ConductivityData> conductivities;
+    ConductivityData data;
     std::ifstream file(file_path);
     std::string line;
 
@@ -210,40 +210,56 @@ std::vector<ConductivityData> readElectronicConductivity(const std::string &file
         if (line.empty() || line[0] == '#')
             continue; // Skip comments and empty lines
         std::istringstream iss(line);
-        ConductivityData data;
-        if (iss >> data.energy >> std::skipws >> data.average_conductivity)
+        data.energy = 1e10; // Set a large value for energy
+        ConductivityData tmp;
+        // 选择电导率最低的那个点
+        if (iss >> tmp.energy >> std::skipws >> tmp.xx_conductivity >> std::skipws >> tmp.yy_conductivity >> std::skipws >> tmp.zz_conductivity >> std::skipws >> tmp.average_conductivity)
         {
-            conductivities.push_back(data);
-            // std::cout << "Energy: " << std::fixed << std::setprecision(4)
-            //           << data.energy << " eV, Average Conductivity: "
-            //           << std::scientific << std::setprecision(4)
-            //           << data.average_conductivity << " 1/(Omega*m/s)" << std::endl;
+            if (tmp.average_conductivity < data.average_conductivity)
+            {
+                data = tmp;
+            }
         }
     }
-    return conductivities;
+    data.average_conductivity /= 1e13; // time constant
+    return data;
 }
 
-std::vector<CarrierConcentrationData> readCarrierConcentration(const std::string &file_path)
+CarrierConcentrationData readCarrierConcentration(const std::string &file_path)
 {
-    std::vector<CarrierConcentrationData> concentrations;
+    // std::vector<CarrierConcentrationData> concentrations;
     std::ifstream file(file_path);
     std::string line;
 
+    CarrierConcentrationData data;
     while (std::getline(file, line))
     {
         if (line.empty() || line[0] == '#')
             continue; // Skip comments and empty lines
         std::istringstream iss(line);
-        CarrierConcentrationData data;
-        if (iss >> data.energy >> data.concentration)
+        CarrierConcentrationData tmp;
+        // 选择energy最接近0的那个点
+        if (iss >> tmp.energy >> tmp.concentration)
         {
-            data.concentration *= 1e20; // Convert to 1/cm^3
-            concentrations.push_back(data);
-            // std::cout << "Energy: " << std::fixed << std::setprecision(5)
-            //           << data.energy << " eV, Carrier Concentration: "
-            //           << std::fixed << std::setprecision(4)
-            //           << data.concentration << " 1/cm^3" << std::endl;
+            if (std::abs(tmp.energy) < std::abs(data.energy))
+            {
+                data = tmp;
+            }
         }
+        // if (iss >> data.energy >> data.concentration)
+        // {
+        //     data.concentration *= 1e20; // Convert to 1/cm^3
+        //     concentrations.push_back(data);
+        //     // std::cout << "Energy: " << std::fixed << std::setprecision(5)
+        //     //           << data.energy << " eV, Carrier Concentration: "
+        //     //           << std::fixed << std::setprecision(4)
+        //     //           << data.concentration << " 1/cm^3" << std::endl;
+        // }
     }
-    return concentrations;
+    //data取正
+    data.energy = std::abs(data.energy);
+    data.concentration *= 1e20; // Convert to 1/cm^3
+    data.concentration /= 1e13; // time constant
+
+    return data;
 }

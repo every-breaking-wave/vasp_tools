@@ -66,7 +66,7 @@ std::string ExtractKmeshValue(const std::string &filename);
 
 std::string ExtractKSpacingValue(const std::string &filename);
 
-void ModifyINCAR(fs::path filepath, const std::map<std::string, std::string> &options);
+void ModifyINCAR(fs::path filepath, const std::map<std::string, std::string> &options, bool clear = false);
 
 // Function to read band.dat file and extract k-points and energies
 void ReadBandDat(const std::string &file_path, std::vector<std::vector<double>> &energies);
@@ -77,6 +77,9 @@ void CalculateBandgap(const std::vector<std::vector<double>> &energies, double &
 struct ConductivityData
 {
     double energy;
+    double xx_conductivity;
+    double yy_conductivity;
+    double zz_conductivity;
     double average_conductivity;
 };
 
@@ -87,6 +90,6 @@ struct CarrierConcentrationData
 };
 
 
-std::vector<ConductivityData> readElectronicConductivity(const std::string &file_path);
+ConductivityData readElectronicConductivity(const std::string &file_path);
 
-std::vector<CarrierConcentrationData> readCarrierConcentration(const std::string &file_path);
+CarrierConcentrationData readCarrierConcentration(const std::string &file_path);
