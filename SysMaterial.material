@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MaterialProperties>
+    <Material>
+        <CommonProperties Name="EPOXY_ARAMID" Type="DIELECTRIC" Conductivity="0" DielConstant="3.9" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="FR-4" Type="DIELECTRIC" Conductivity="0" DielConstant="4.5" LossTangent="0.035"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="FR-4.1" Type="DIELECTRIC" Conductivity="0" DielConstant="4.1" LossTangent="0.02"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="FR-4_epoxy" Type="DIELECTRIC" Conductivity="0" DielConstant="4.4" LossTangent="0.02"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Isola FR408HR" Type="DIELECTRIC" Conductivity="0" DielConstant="3.68" LossTangent="0.0092"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Isola FR408HRR1S" Type="DIELECTRIC" Conductivity="0" DielConstant="3.69" LossTangent="0.0088"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Megtron6_1035_Laminate" Type="DIELECTRIC" Conductivity="0" DielConstant="3.46" LossTangent="0.002"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Megtron6_1035_PP" Type="DIELECTRIC" Conductivity="0" DielConstant="3.35" LossTangent="0.002"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Megtron6_1078_PP" Type="DIELECTRIC" Conductivity="0" DielConstant="3.41" LossTangent="0.002"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Megtron6_3313_Laminate" Type="DIELECTRIC" Conductivity="0" DielConstant="3.71" LossTangent="0.002"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Nelco N4000-13 (tm)" Type="DIELECTRIC" Conductivity="0" DielConstant="3.5" LossTangent="0.012"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Nelco N4000-13 SI (tm)" Type="DIELECTRIC" Conductivity="0" DielConstant="3.4" LossTangent="0.01"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="PLATED_COPPER_FOIL" Type="CONDUCTOR" Conductivity="34300000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="POLYIMIDE GLASS" Type="DIELECTRIC" Conductivity="0" DielConstant="4.7" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="PVC plastic" Type="DIELECTRIC" Conductivity="0" DielConstant="2.7" LossTangent="0.007"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="RESISTOR_INK" Type="DIELECTRIC" Conductivity="0" DielConstant="4.5" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="SILICON_CHIP" Type="DIELECTRIC" Conductivity="0" DielConstant="4.5" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="SILICON_NITRIDE" Type="DIELECTRIC" Conductivity="0" DielConstant="6" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="SOLDER_60_40" Type="CONDUCTOR" Conductivity="4600000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Solder Alloy 99C Sn-0.7Cu" Type="CONDUCTOR" Conductivity="7540000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Solder Castin-TM Sn-2.5Ag-0.8Cu-0.5Sb" Type="CONDUCTOR" Conductivity="8250000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Solder Ecosol TSC Sn-3.8Ag-0.7Cu" Type="CONDUCTOR" Conductivity="7540000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Solder Eutectic Sn-37 Pb" Type="CONDUCTOR" Conductivity="6900000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Solder Lead-Free Sn-3.5Ag" Type="CONDUCTOR" Conductivity="8120000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Solder Lead-Free Sn-3.5Ag-0.7Cu" Type="CONDUCTOR" Conductivity="7540000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="SolderMask" Type="DIELECTRIC" Conductivity="0" DielConstant="3.1" LossTangent="0.035"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="Teflon (tm)" Type="DIELECTRIC" Conductivity="0" DielConstant="2.1" LossTangent="0.001"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="WATER" Type="DIELECTRIC" Conductivity="0" DielConstant="4.5" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="air" Type="DIELECTRIC" Conductivity="0" DielConstant="1.006" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="aluminum" Type="CONDUCTOR" Conductivity="38000000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="copper" Type="CONDUCTOR" Conductivity="58000000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="glass" Type="DIELECTRIC" Conductivity="0" DielConstant="5.5" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="gold" Type="CONDUCTOR" Conductivity="41000000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="iron" Type="CONDUCTOR" Conductivity="10300000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="lead" Type="CONDUCTOR" Conductivity="5000000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="mica" Type="DIELECTRIC" Conductivity="0" DielConstant="5.7" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="modified_epoxy" Type="DIELECTRIC" Conductivity="0" DielConstant="4.2" LossTangent="0.02"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="nickel" Type="CONDUCTOR" Conductivity="14500000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="pec" Type="CONDUCTOR" Conductivity="1E+30" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="perfect conductor" Type="CONDUCTOR" Conductivity="1E+30" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="platinum" Type="CONDUCTOR" Conductivity="9300000" DielConstant="0" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="polyimide" Type="DIELECTRIC" Conductivity="0" DielConstant="3.5" LossTangent="0.008"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="polyimideQuartz" Type="DIELECTRIC" Conductivity="0" DielConstant="4" LossTangent="0"/>
+    </Material>
+    <Material>
+        <CommonProperties Name="quartz_glass" Type="DIELECTRIC" Conductivity="0" DielConstant="3.78" LossTangent="0"/>
+    </Material>
+</MaterialProperties>

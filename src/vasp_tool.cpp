@@ -210,7 +210,7 @@ ConductivityData readElectronicConductivity(const std::string &file_path)
         if (line.empty() || line[0] == '#')
             continue; // Skip comments and empty lines
         std::istringstream iss(line);
-        data.energy = 1e10; // Set a large value for energy
+        data.average_conductivity = 1e50; // Set a large value for energy
         ConductivityData tmp;
         // 选择电导率最低的那个点
         if (iss >> tmp.energy >> std::skipws >> tmp.xx_conductivity >> std::skipws >> tmp.yy_conductivity >> std::skipws >> tmp.zz_conductivity >> std::skipws >> tmp.average_conductivity)
