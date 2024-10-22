@@ -18,7 +18,6 @@ executor = ThreadPoolExecutor(max_workers=100)
 
 token = 0
 
-
 import asyncio
 import os
 import time
@@ -27,10 +26,10 @@ import struct
 from fdtd import filePath
 
 # TODO: 更改为实际的VASP服务器IP和端口
-vasp_host_ip = "10.180.154.145"
+vasp_host_ip = "192.168.137.2"
 vasp_host_port = 12345
 
-material_lib_file = "SysMaterial.material"
+material_lib_file = "C:/Users/PS/fuldsi-main/x64/FulDSI/bin/Release/DefaultMaterial/SysMaterial.material"
 
 
 class RemoteClient:
@@ -142,7 +141,6 @@ class RemoteClient:
 
 
 class VASP:
-
     client = None
     filepath = None
     isDone = False
@@ -203,7 +201,7 @@ def parseFromFULDSIMessage(data):
     mess_len = data[4:8]
     token_ = int.from_bytes(f_token, byteorder="little")
     message_len_ = int.from_bytes(mess_len, byteorder="little")
-    message_bytes = data[8 : (8 + message_len_)]
+    message_bytes = data[8: (8 + message_len_)]
     message = message_bytes.decode()
     return message
 
@@ -242,6 +240,7 @@ def getLogFilePath():
 
 from fractions import Fraction
 import numpy as np
+
 
 def extract_formula(contcar_file):
     with open(contcar_file, "r") as file:
@@ -315,7 +314,7 @@ def uploadResultToLib():
         bandgap = ""
 
         for line in result_lines:
-            if line.startswith("CONDUCTIVITY"):   # 提取电导率，去掉单位
+            if line.startswith("CONDUCTIVITY"):
                 conductivity = line.split("=")[1].split()[0]
             elif line.startswith("DIELECTRIC"):
                 diel_constant = line.split("=")[1].split()[0]
@@ -347,7 +346,7 @@ def uploadResultToLib():
         specific_heat_str = f'SpecificHeat="{specific_heat}"' if specific_heat else ""
         bandgap_str = f'Bandgap="{bandgap}"' if bandgap else ""
         material_properties = f'    <Material>\n\t<CommonProperties Name="{formula}" Type="DIELECTRIC"' + \
-        f'{density_str} {bandgap_str} {conductivity_str} {diel_constant_str} {loss_tangent_str} {mobility_str}  {thermal_expansion_str} {thermal_conductivity_str} {specific_heat_str}/>\n    </Material>\n'
+                              f' {density_str} {bandgap_str} {conductivity_str} {diel_constant_str} {loss_tangent_str} {mobility_str}  {thermal_expansion_str} {thermal_conductivity_str} {specific_heat_str}/>\n    </Material>\n'
         material_lib = material_lib.replace(
             "</MaterialProperties>", material_properties
         )
@@ -355,8 +354,9 @@ def uploadResultToLib():
         with open(material_lib_file, "w") as f:
             f.write(material_lib)
         print(f"Material properties updated in {material_lib_file}")
-        
+
         return
+
 
 def visualVASPInner():
     global vasp
