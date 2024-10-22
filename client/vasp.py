@@ -49,18 +49,15 @@ class RemoteClient:
         # compute_finished = await self.reader.readuntil(b'\n')
         # print(f'Compute finished: {compute_finished}')
         filename_len_data = await self.reader.readexactly(4)
-        print(f"Filename length data: {filename_len_data}")
         if not filename_len_data:
             return False  # 没有接收到数据，结束接收
         filename_len = struct.unpack("I", filename_len_data)[0]
 
-        print(f"Filename length: {filename_len}")
-
         # 接收文件名
         filename = (await self.reader.readexactly(filename_len)).decode()
-
         if filename.startswith("END_OF_FILE"):
             return False
+        print(f'receive file, filename is {filename}')
 
         # 接收文件大小（8 字节）
         filesize_data = await self.reader.readexactly(8)
@@ -242,8 +239,8 @@ from fractions import Fraction
 import numpy as np
 
 
-def extract_formula(contcar_file):
-    with open(contcar_file, "r") as file:
+def extract_formula(poscar_file):
+    with open(poscar_file, "r") as file:
         lines = file.readlines()
 
     elements = lines[5].split()
@@ -277,7 +274,7 @@ def uploadResultToLib():
     result_file = result_files[0]
     result_file_path = os.path.join(vasp.output_path, result_file)
 
-    formula = extract_formula(vasp.output_path + "/CONTCAR")
+    formula = extract_formula(vasp.filepath)
 
     with open(result_file_path, "r") as f:
         result_data = f.read()
@@ -314,7 +311,7 @@ def uploadResultToLib():
         bandgap = ""
 
         for line in result_lines:
-            if line.startswith("CONDUCTIVITY"):
+            if line.startswith("CONDUCTIVITY"):  # 提取电导率，去掉单位
                 conductivity = line.split("=")[1].split()[0]
             elif line.startswith("DIELECTRIC"):
                 diel_constant = line.split("=")[1].split()[0]
