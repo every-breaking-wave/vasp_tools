@@ -83,10 +83,10 @@ void RemoteServer::HandleConnection(std::shared_ptr<tcp::socket> socket)
     fs::current_path(data_dir_);
     socket->async_read_some(boost::asio::buffer(*buffer), [this, socket, buffer](boost::system::error_code ec, std::size_t length)
                             {
+        std::cout << "Received: " << std::string(buffer->data(), length) << std::endl;
         if (!ec) {
             std::string data(buffer->data(), length);
-            if (data.substr(0, 4) == "FILE") {
-                std::string::size_type pos = data.find('\n');
+                            std::string::size_type pos = data.find('\n');
                 std::string posfile;
                 if (pos != std::string::npos) {
                     posfile = data.substr(4, pos - 4) + "_" + std::to_string(time(nullptr));
@@ -105,23 +105,9 @@ void RemoteServer::HandleConnection(std::shared_ptr<tcp::socket> socket)
                         HandleFileCompletion(filename, socket);
                     });
                 }
-            } else if (data.substr(0, 4) == "CMD ") {  // TODO: 目前这个功能不需要
-                    std::string command = data.substr(4);
-                    std::string output = ExecuteCommand(command);
-                    std::cout << "Command executed: " << command << std::endl;
-		            std::cout << "Output: " << output << std::endl;
-                    boost::asio::async_write(*socket, boost::asio::buffer(output), 
-                        [this, socket](boost::system::error_code ec, std::size_t /*length*/) {
-                            if (!ec) {
-                                std::cout << "Command executed and result sent back." << std::endl;
-                            } else {
-                                std::cerr << "Failed to send command output: " << ec.message() << std::endl;
-                            }
-                        });
-                }
-            } else {
-                std::cerr << "Failed to read from socket: " << ec.message() << std::endl;
-            } });
+
+            } 
+             });
 }
 
 void RemoteServer::ReceiveFileContent(std::shared_ptr<tcp::socket> socket, std::shared_ptr<std::ofstream> file, const std::string &file_name, std::function<void(const std::string &, std::shared_ptr<tcp::socket>)> on_complete)
@@ -205,18 +191,18 @@ std::vector<std::string> RemoteServer::PerformVaspCompute(const std::string &pos
 
     vasp->GetDensity();
 
-    std::cout << "Performing dielectric calculation..." << std::endl;
-    vasp->PerformDielectricCalculation();
+    // std::cout << "Performing dielectric calculation..." << std::endl;
+    // vasp->PerformDielectricCalculation();
 
-    std::cout << "Performing band structure calculation..." << std::endl;
-    vasp->PerformBandStructureCalculation();
+    // std::cout << "Performing band structure calculation..." << std::endl;
+    // vasp->PerformBandStructureCalculation();
 
-    std::cout << "Performing conductivity calculation..." << std::endl;
-    vasp->PerformConductivityCalculation();
+    // std::cout << "Performing conductivity calculation..." << std::endl;
+    // vasp->PerformConductivityCalculation();
 
-    std::cout << "Performing thermal expansion calculation..." << std::endl;
-    std::cout << "This could take a long time." << std::endl;
-    vasp->PerformThermalExpansionCalculation();
+    // std::cout << "Performing thermal expansion calculation..." << std::endl;
+    // std::cout << "This could take a long time." << std::endl;
+    // vasp->PerformThermalExpansionCalculation();
 
     std::cout << "VASP calculation complete." << std::endl;
     return vasp->StoreResults();
